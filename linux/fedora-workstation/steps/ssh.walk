@@ -462,32 +462,33 @@ walkthrough "linux-fedora-workstation - sshd"
   # THE LOOP ONLY LOOKS. Its `do:` is a `settle:` and nothing else: the window takes a few seconds to
   # map, and a loop that PRESSED a key to "help" would be pressing it into whatever had the focus -
   # which is exactly how the commands ended up in the search box.
-  step "the terminal is open, with a prompt"
-    # THE PROMPT IS READ AS `fedora:~$`, NOT AS `vmuser@fedora`, BECAUSE OCR MISREADS THE NAME AND
-    # THE NAME IS NOT WHAT THIS PROVES.
-    #
-    # MEASURED ON THE POD: the terminal WAS open, and the gate failed on its own transcription:
-    #
-    #	see: 10 word(s): =, ESE STH == a vnuser@fedora:~$ | q | |
-    #	the terminal is open, with a prompt [check]: ready = false
-    #	    (none of "vmuser@fedora" in "... vnuser@fedora:~$ ...")
-    #
-    # `vmuser` came back as `vnuser` - m read as n - so a gate that demands the exact name fails on a
-    # correct screen. What the prompt says about the world is "this is a shell, in fedora's home
-    # directory"; the account name is a detail OCR is bad at and this step does not depend on.
-    #
-    # `fedora:~` is the part that survives: it is short, it is monospaced, and nothing else on this
-    # desktop draws it.
-    # THE RECT IS THE PROMPT LINE ITSELF, [595, 325, 900, 380]. MEASURED on a frame where the
-    # terminal WAS open, with tesseract:
-    #
-    #	[300, 280, 1330, 810]  ->  "=, ESE STH == a vnuser@fedora:~$ | q | |"    m as n, o as e
-    #	[595, 325, 900, 380]   ->  "vmuser@fedora:~$ |"                          exactly right
-    #
-    # THE WHOLE WINDOW IS TOO MUCH FOR THE READER. The wide box pulls in the title bar, the scrollbar
-    # and a row of unrelated glyphs, and the prompt - the one thing this step needs - degrades with
-    # them. A rectangle that contains ONLY the line being tested reads it cleanly.
-    loop == {check: {from: shell, mode: text, name: ready, rect: [595, 325, 900, 380], rect_at: [1920, 1080], scale: 1, words: [[vmuser@fedora:~$]]}, do: [{settle: 4}], max: 4, see: {name: shell}, until: {fact: ready}}
+  # THE TERMINAL IS PROVEN BY MAKING IT ANSWER, NOT BY READING ITS PROMPT.
+  #
+  # MEASURED ON THE POD, THREE TIMES, and the screen was RIGHT every time:
+  #
+  #	see: 1 word(s): vnuser@fedora:~$
+  #	the terminal is open, with a prompt [check]: ready = false
+  #	    (none of "vmuser@fedora:~$" in "vnuser@fedora:~$")
+  #
+  # `vmuser` comes back as `vnuser` - m read as n - and the engine matches a WHOLE NORMALISED WORD,
+  # so a one-letter misread is a hard failure. Widening the rectangle made it worse (the title bar and
+  # scrollbar came too); narrowing it to the prompt line made it better and still not exact; cropping
+  # to `@fedora:~` turned the `@` into a `W`. THE PROMPT IS NOT A RELIABLE GATE ON THIS GUEST, and
+  # every attempt to make it one was tuning a reader against a font.
+  #
+  # SO THE TERMINAL IS ASKED A QUESTION INSTEAD. `echo` writes a token the reader has never had to
+  # recognise before, and the token appears only if a shell ran it - which is what this step is
+  # actually trying to establish. A prompt is evidence that a shell is IDLE; the token is evidence
+  # that it WORKED.
+  step "the terminal answers a command"
+    run == echo TERMINAL_READY
+    type_gap == 0.12
+    settle == 3
+  step "the terminal is a shell that runs what it is given"
+    # A WORD THE READER CANNOT CONFUSE: all capitals, no descenders, nothing that looks like another
+    # letter. `TERMINAL_READY` normalises to `terminalready`, so the underscore is not part of the
+    # match and cannot be misread.
+    loop == {check: {from: shell, mode: text, name: ready, rect: [595, 325, 1330, 480], rect_at: [1920, 1080], scale: 1, words: [[terminalready]]}, do: [{settle: 3}], max: 4, see: {name: shell}, until: {fact: ready}}
   # NO `terminal_wait:` HERE, AND THAT IS THE FIX RATHER THAN AN OMISSION.
   #
   # `terminal_wait:` OPENS A TERMINAL (ctrl+alt+t) AND THEN TYPES. The step above has already
