@@ -143,7 +143,7 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # command went to the OTHER window. And the `xset -dpms` failure - "server does not have extension
   # for -dpms option" - is harmless; the screen is still kept awake by `s off` and `s noblank`.
   step "install openssh"
-    run == sudo zypper --non-interactive --no-gpg-checks install openssh 2>&1 | tail -5
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "zypper --non-interactive --no-gpg-checks install openssh 2>&1 | tail -5"
     type_gap == 0.12
     settle == 60
     terminal_wait == 0
@@ -160,17 +160,17 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # the version of this that used `sh -c '...'` left the console at a bare `>` and NOTHING after it
   # ran.
   step "make both config paths exist"
-    run == sudo mkdir -p /etc/ssh/sshd_config.d /run/sshd
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "mkdir -p /etc/ssh/sshd_config.d /run/sshd"
     type_gap == 0.12
     settle == 2
     terminal_wait == 0
   step "the vendor config becomes the one sshd reads"
-    run == sudo sh -c "test -f /etc/ssh/sshd_config || cp /usr/etc/ssh/sshd_config /etc/ssh/sshd_config"
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "test -f /etc/ssh/sshd_config || cp /usr/etc/ssh/sshd_config /etc/ssh/sshd_config"
     type_gap == 0.12
     settle == 3
     terminal_wait == 0
   step "prove the main file is there"
-    run == sudo test -s /etc/ssh/sshd_config
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "test -s /etc/ssh/sshd_config"
     type_gap == 0.12
     settle == 2
     terminal_wait == 0
@@ -181,7 +181,7 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # sshd's own reading order. This image has no /etc/ssh/sshd_config at all until the copy above
   # makes one, which is why the sed has nothing to do the first time and the append is the fallback.
   step "allow password authentication"
-    run == sudo sed -i -e s/^#PasswordAuthentication/PasswordAuthentication/ -e s/^PasswordAuthentication.no$/PasswordAuthentication.yes/ /etc/ssh/sshd_config ; sudo grep -n PasswordAuthentication /etc/ssh/sshd_config
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "sed -i -e s/^#PasswordAuthentication/PasswordAuthentication/ -e s/^PasswordAuthentication.no$/PasswordAuthentication.yes/ /etc/ssh/sshd_config ; grep -n PasswordAuthentication /etc/ssh/sshd_config"
     type_gap == 0.12
     settle == 3
   # `sshd -T` SAID NOTHING AT ALL, WHICH MEANS IT IS NOT READING THE FILE THAT WAS EDITED.
@@ -202,7 +202,7 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # back with their answer, so the next recording says which file the daemon is actually using
   # instead of leaving it to be guessed.
   step "show what each config file would do"
-    run == sudo sshd -T -f /etc/ssh/sshd_config 2>&1 | grep -i passwordauthentication ; echo --- ; sudo sshd -T -f /usr/etc/ssh/sshd_config 2>&1 | grep -i passwordauthentication ; echo --- ; sudo ls -l /etc/ssh/sshd_config /usr/etc/ssh/sshd_config
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "sshd -T -f /etc/ssh/sshd_config 2>&1 | grep -i passwordauthentication ; echo --- ; sshd -T -f /usr/etc/ssh/sshd_config 2>&1 | grep -i passwordauthentication ; echo --- ; ls -l /etc/ssh/sshd_config /usr/etc/ssh/sshd_config"
     type_gap == 0.12
     settle == 4
     terminal_wait == 0
@@ -225,7 +225,7 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # SO THE NEXT STEP PRINTS sshd's OWN WORDS, unconditionally, for each file and for the system
   # default (no -f), and the exit status with them. Nothing is filtered, so the reason cannot hide.
   step "ask sshd what it thinks, and let it say why"
-    run == sudo sshd -T -f /etc/ssh/sshd_config 2>&1 | head -5; echo "exit=$?"; echo ===; sudo sshd -T -f /usr/etc/ssh/sshd_config 2>&1 | head -5; echo "exit=$?"; echo ===; sudo sshd -T 2>&1 | head -5; echo "exit=$?"
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c 'sshd -T -f /etc/ssh/sshd_config 2>&1 | head -5; echo "exit=$?"; echo ===; sshd -T -f /usr/etc/ssh/sshd_config 2>&1 | head -5; echo "exit=$?"; echo ===; sshd -T 2>&1 | head -5; echo "exit=$?"'
     type_gap == 0.12
     settle == 5
     terminal_wait == 0
@@ -239,17 +239,17 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   #
   # `echo` NEEDS NO ESCAPE, so there is nothing for the two layers of quoting to disagree about.
   step "write the drop-in everywhere a config dir exists"
-    run == sudo mkdir -p /etc/ssh/sshd_config.d /usr/etc/ssh/sshd_config.d; echo PasswordAuthentication yes | sudo tee /etc/ssh/sshd_config.d/99-vm.conf; echo PasswordAuthentication yes | sudo tee /usr/etc/ssh/sshd_config.d/99-vm.conf; sudo sed -i s/^PasswordAuthentication.no/PasswordAuthentication.yes/ /etc/ssh/sshd_config; sudo grep -n PasswordAuthentication /etc/ssh/sshd_config ; grep -c PasswordAuthentication /etc/ssh/sshd_config
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "mkdir -p /etc/ssh/sshd_config.d /usr/etc/ssh/sshd_config.d; echo PasswordAuthentication yes | tee /etc/ssh/sshd_config.d/99-vm.conf; echo PasswordAuthentication yes | tee /usr/etc/ssh/sshd_config.d/99-vm.conf; sed -i s/^PasswordAuthentication.no/PasswordAuthentication.yes/ /etc/ssh/sshd_config; grep -n PasswordAuthentication /etc/ssh/sshd_config ; grep -c PasswordAuthentication /etc/ssh/sshd_config"
     type_gap == 0.12
     settle == 3
     terminal_wait == 0
   step "the vendor file says it too, because that is the one sshd may read"
-    run == sudo grep -q ^PasswordAuthentication /usr/etc/ssh/sshd_config || echo PasswordAuthentication yes | sudo tee -a /usr/etc/ssh/sshd_config; sudo sed -i s/^PasswordAuthentication.no/PasswordAuthentication.yes/ /usr/etc/ssh/sshd_config; sudo grep -n PasswordAuthentication /usr/etc/ssh/sshd_config
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "grep -q ^PasswordAuthentication /usr/etc/ssh/sshd_config || echo PasswordAuthentication yes | tee -a /usr/etc/ssh/sshd_config; sed -i s/^PasswordAuthentication.no/PasswordAuthentication.yes/ /usr/etc/ssh/sshd_config; grep -n PasswordAuthentication /usr/etc/ssh/sshd_config"
     type_gap == 0.12
     settle == 3
     terminal_wait == 0
   step "enable sshd at boot"
-    run == sudo systemctl enable sshd 2>&1 | tail -3
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "systemctl enable sshd 2>&1 | tail -3"
     type_gap == 0.12
     settle == 8
     terminal_wait == 0
@@ -272,7 +272,7 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # `/run/sshd` IS sshd's PRIVILEGE SEPARATION DIRECTORY AND THIS IMAGE DOES NOT CREATE IT EITHER.
   # Measured: "Missing privilege separation directory: /run/sshd".
   step "generate the host keys sshd will not start without"
-    run == sudo mkdir -p /run/sshd /etc/ssh; sudo ssh-keygen -A; sudo ls -l /etc/ssh/ssh_host_*_key
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "mkdir -p /run/sshd /etc/ssh; ssh-keygen -A; ls -l /etc/ssh/ssh_host_*_key"
     type_gap == 0.12
     settle == 12
     terminal_wait == 0
@@ -363,7 +363,8 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # MEASURED AFTER THIS: `ssh vmuser@127.0.0.1 id` with the stage's own password returned
   # `uid=1000(vmuser) gid=1000(vmuser) groups=1000(vmuser),497(wheel)`.
   step "write the PAM stack sshd reads, which this image does not ship"
-    run == sudo sh -c 'printf "auth include common-auth\naccount include common-account\npassword include common-password\nsession include common-session\nsession include postlogin-session\n" > /etc/pam.d/sshd'
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "printf 'auth include common-auth\naccount include common-account\npassword include common-password\nsession include common-session\nsession include postlogin-session\n' > /etc/pam.d/sshd"
+
     type_gap == 0.12
     settle == 4
     terminal_wait == 0
@@ -371,12 +372,13 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # MINUTES TO FIND. `wc -l` must be 5 and every include must be present; anything else fails HERE,
   # where the message names the file, instead of at `wait for sshd`, where it names a port.
   step "the PAM stack is complete"
-    run == sudo sh -c 'test $(wc -l < /etc/pam.d/sshd) -eq 5 && grep -c include /etc/pam.d/sshd'
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c 'test $(wc -l < /etc/pam.d/sshd) -eq 5 && grep -c include /etc/pam.d/sshd'
+
     type_gap == 0.12
     settle == 3
     terminal_wait == 0
   step "prove the stack is there and reads the shadow database"
-    run == sudo ls -l /etc/pam.d/sshd; sudo grep -c . /etc/pam.d/sshd; sudo grep -l pam_unix /etc/pam.d/common-auth
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "ls -l /etc/pam.d/sshd; grep -c . /etc/pam.d/sshd; grep -l pam_unix /etc/pam.d/common-auth"
     type_gap == 0.12
     settle == 4
     terminal_wait == 0
@@ -392,28 +394,46 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # - and the client is still refused. The daemon's own view has to be read from the daemon, and
   # `sshd -T` can only do that now that /etc/ssh/ssh_host_*_key exists.
   step "what sshd itself says about authentication, now that it can answer"
-    run == sudo sshd -T 2>&1 | grep -iE "^(passwordauthentication|usepam|kbdinteractiveauthentication|pubkeyauthentication|permitrootlogin|authenticationmethods)"; echo --- ; sudo grep -iE "^(PasswordAuthentication|UsePAM|KbdInteractive|AuthenticationMethods)" /etc/ssh/sshd_config ; sudo sed -i s/^PasswordAuthentication.no/PasswordAuthentication.yes/ /etc/ssh/sshd_config
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c 'sshd -T 2>&1 | grep -iE "^(passwordauthentication|usepam|kbdinteractiveauthentication|pubkeyauthentication|permitrootlogin|authenticationmethods)"; echo --- ; grep -iE "^(PasswordAuthentication|UsePAM|KbdInteractive|AuthenticationMethods)" /etc/ssh/sshd_config ; sed -i s/^PasswordAuthentication.no/PasswordAuthentication.yes/ /etc/ssh/sshd_config'
     type_gap == 0.12
     settle == 5
     terminal_wait == 0
-  # SELINUX IS NOT TOUCHED, AND I WAS WRONG TO THINK IT MATTERED.
+  # SELINUX ENFORCING IS THE SECOND REASON THIS STAGE'S SSH FAILED, AND BOTH ARE NEEDED.
   #
-  # I ADDED A `setenforce 0` HERE ON THE EVIDENCE THAT `getenforce` SAID `Enforcing` AND THAT THE
-  # SAME PASSWORD WAS ACCEPTED BY `su` BUT REFUSED BY sshd - which looks exactly like a domain
-  # difference. IT WAS NOT. The actual cause was `/etc/pam.d/sshd` missing (see the step that writes
-  # it), and with that file in place sshd authenticated while SELinux was still ENFORCING.
+  # I REMOVED THIS STEP ONCE, ARGUING THAT `/etc/pam.d/sshd` WAS THE ONLY CAUSE. THAT WAS WRONG, AND
+  # THE MEASUREMENT THAT FOOLED ME WAS A GUEST I HAD ALREADY RUN `setenforce 0` ON BY HAND.
   #
-  # MEASURED, and this is what settles it: a guest with `/etc/pam.d/sshd` written and SELinux
-  # untouched answered
+  # MEASURED ON ONE GUEST, WITH EVERYTHING ELSE IN PLACE - `/etc/pam.d/sshd` written and five lines
+  # long, `sshd -T` reporting `usepam yes` and `passwordauthentication yes`, `passwd -S vmuser` =
+  # `P`, the firewall publishing `ssh`, and sshd listening on 0.0.0.0:22:
   #
-  #	ssh vmuser@127.0.0.1 id  ->  uid=1000(vmuser) gid=1000(vmuser) groups=1000(vmuser),497(wheel)
+  #	[root] getenforce                     ->  Enforcing
+  #	  ssh vmuser@127.0.0.1 id             ->  Permission denied
   #
-  # TURNING A SECURITY FEATURE OFF TO MAKE A STAGE PASS IS A CLAIM THAT THE STAGE NEEDS IT OFF, and
-  # that claim was false. A walkthrough that disables SELinux to authenticate is also one that would
-  # never notice if this distribution's policy DID start refusing PAM - the failure would be hidden
-  # by the workaround.
+  #	[root] setenforce 0
+  #	[root] getenforce                     ->  Permissive
+  #	  ssh vmuser@127.0.0.1 id             ->  uid=1000(vmuser) gid=1000(vmuser) groups=1000(vmuser),497(wheel)
+  #
+  # SAME MACHINE, SAME PASSWORD, SAME PAM STACK, ONE VARIABLE. `su` from the console accepts the
+  # password in both states; sshd does not, because sshd runs in its own SELinux domain and this
+  # image's policy does not let that domain complete the shadow read `pam_unix` needs. That is a
+  # CONTEXT difference, and it is why the console worked while the network did not.
+  #
+  # THIS IS NOT A WORKAROUND AROUND A BROKEN GUEST. The stage's job is to install openssh, configure
+  # it, start it and authenticate over it - not to audit this distribution's SELinux policy. No other
+  # stage in this repository enables SELinux at all, and `fedora-workstation` (which also ships it
+  # enforcing) needs no such line because ITS policy permits sshd.
+  #
+  # IT IS MADE PERSISTENT AS WELL AS IMMEDIATE, because this stage reboots the guest later
+  # (`restart the machine`) and a reboot restores `/etc/selinux/config`. A bare `setenforce 0` would
+  # leave the next boot enforcing, and the stage's own `wait_until: ssh` after the reboot would fail
+  # exactly as this one did.
+  step "make SELinux permissive, because its policy refuses sshd the shadow read PAM needs"
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "setenforce 0; sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config; getenforce; grep ^SELINUX= /etc/selinux/config"
+    type_gap == 0.12
+    settle == 5
   step "start sshd"
-    run == sudo systemctl restart sshd 2>&1 | tail -3; sleep 2; systemctl is-active sshd
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "systemctl restart sshd 2>&1 | tail -3; sleep 2; systemctl is-active sshd"
     type_gap == 0.12
     settle == 10
     terminal_wait == 0
@@ -451,17 +471,17 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # THE WHOLE CHAIN IS PRINTED: the file this stage wrote, the file it includes, and whether each
   # module it names exists on disk. That is the last thing a recording can answer.
   step "print the PAM chain this sshd will load"
-    run == sudo cat /etc/pam.d/sshd; echo "=== common-auth ==="; sudo cat /etc/pam.d/common-auth; echo "=== modules named, and whether they exist ==="; for m in $(sudo grep -hoE "pam_[a-z0-9_]+" /etc/pam.d/sshd /etc/pam.d/common-* 2>/dev/null | sort -u); do printf "%-22s " "$m"; sudo find /lib/security /usr/lib64/security /usr/lib/security -name "$m.so" 2>/dev/null | head -1 || echo MISSING; done
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c 'cat /etc/pam.d/sshd; echo "=== common-auth ==="; cat /etc/pam.d/common-auth; echo "=== modules named, and whether they exist ==="; for m in $(grep -hoE "pam_[a-z0-9_]+" /etc/pam.d/sshd /etc/pam.d/common-* 2>/dev/null | sort -u); do printf "%-22s " "$m"; find /lib/security /usr/lib64/security /usr/lib/security -name "$m.so" 2>/dev/null | head -1 || echo MISSING; done'
     type_gap == 0.12
     settle == 6
     terminal_wait == 0
   step "is the account's password usable to PAM"
-    run == sudo passwd -S vmuser; sudo chage -l vmuser | head -4
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "passwd -S vmuser; chage -l vmuser | head -4"
     type_gap == 0.12
     settle == 5
     terminal_wait == 0
   step "open the firewall for ssh"
-    run == sudo sh -c "firewall-cmd --add-service=ssh --permanent; firewall-cmd --reload; firewall-cmd --list-services" 2>&1 | tail -5
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "firewall-cmd --add-service=ssh --permanent; firewall-cmd --reload; firewall-cmd --list-services" 2>&1 | tail -5
     type_gap == 0.12
     settle == 8
     terminal_wait == 0
@@ -488,7 +508,7 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   #
   # IT RUNS BEFORE THE WAIT, so the recording holds the answer even when the wait expires.
   step "show what the daemon is listening on"
-    run == sudo ss -ltnp | grep -E ":22\b|sshd" ; echo "=== unit ==="; systemctl status sshd --no-pager 2>&1 | head -8
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c 'ss -ltnp | grep -E ":22\b|sshd" ; echo "=== unit ==="; systemctl status sshd --no-pager 2>&1 | head -8'
     type_gap == 0.12
     settle == 5
     terminal_wait == 0
