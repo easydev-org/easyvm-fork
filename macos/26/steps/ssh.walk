@@ -49,15 +49,59 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
     when_not == [allow, full, disk, access]
   step "the remote login pane is up"
     loop == {check: {from: screen, mode: text, name: done, rect: [726, 300, 1200, 715], rect_at: [1920, 1080], scale: 2, words: [[allow, full, disk, access]]}, do: [{settle: 3}], max: 30, see: {name: screen}, until: {fact: done}}
-  step "turn remote login on"
-    click == [1145, 353]
-    rect == [726, 300, 1200, 715]
-    rect_at == [1920, 1080]
-    scale == 2
-    settle == 4
-    when_not == [log, in, to, this, computer]
-  step "the switch reads on"
-    loop == {check: {from: screen, mode: text, name: done, rect: [726, 300, 1200, 715], rect_at: [1920, 1080], scale: 2, words: [[log, in, to, this, computer]]}, do: [{settle: 3}], max: 10, see: {name: screen}, until: {fact: done}}
+  # TURNING REMOTE LOGIN ON RAISES AN AUTHORISATION DIALOG, AND THE OLD STEPS WALKED PAST IT.
+  #
+  # MEASURED on run 44679850735's recording, whose last fifty minutes are this one screen:
+  #
+  #	Sharing
+  #	Remote Login is trying to modify system settings.
+  #	Enter your password to allow this.
+  #
+  #	[ vmuser  ]
+  #	[ Password ]          <- the cursor is here
+  #	[ Modify Settings ]   [ Cancel ]
+  #
+  # Clicking the switch does nothing until that dialog is answered, so the switch stayed off, sshd
+  # never started, and `wait for sshd` spent its ten minutes on a closed port. The two steps that
+  # followed were waiting for the words "log in to this computer" - which is what macOS 15's Remote
+  # Login pane says once the switch is ON. This image says it differently, so the check could never
+  # pass and the loop ran its whole budget.
+  #
+  # SO THE DIALOG IS ANSWERED, and the question "did it work" is asked of the SWITCH rather than of a
+  # sentence: after the dialog is accepted the pane shows the remote-login status line, and the old
+  # phrase is kept as an OR because that is what a 15-style pane would show.
+  step "the authorisation dialog is up, if this pane asks for one"
+    loop == {check: {from: screen, mode: text, name: asked, rect: [830, 380, 1200, 730], rect_at: [1920, 1080], scale: 2, words: [[remote, login, is, trying, to, modify]]}, do: [{settle: 2}], max: 6, see: {name: screen}, until: {fact: asked}}
+    optional == true
+  # THE COORDINATES ARE MEASURED FROM THE DIALOG ITSELF, NOT FROM ITS SHAPE.
+  #
+  # From run 44679850735's frame, scanning the pixel colour of the accent button:
+  #
+  #	Password field    y 575..590    (the box above the buttons)
+  #	accent blue       y 620..645    (0,122,255) - that is `Modify Settings`, the default button
+  #	Cancel            y 650..660
+  step "answer it with the account's password"
+    when == [asked]
+    click == [958, 583]
+    settle == 1
+  step "type the password into the dialog"
+    when == [asked]
+    type == '{{ password }}'
+    type_gap == 0.10
+    settle == 1
+  step "accept the change"
+    when == [asked]
+    click == [958, 632]
+    settle == 6
+  # NO STEP HERE CLAIMS "THE SWITCH IS ON", AND THAT IS DELIBERATE.
+  #
+  # The pane's title is "Remote Login" whether the switch is on or off, and the sentence that used to
+  # be checked ("log in to this computer") is 15's wording for the ON state and does not appear on
+  # this image at all. A check that passes in both states is worse than no check - it reads like
+  # evidence and is not.
+  #
+  # THE PROOF THAT THE SWITCH TOOK IS `wait for sshd` BELOW: sshd is started by that switch and by
+  # nothing else, so a port that answers is the state this step cannot fake.
   click "close the pane" at 1145 679, waiting 5s, named "close the pane"
   step "wait for sshd"
     require_ssh == true
