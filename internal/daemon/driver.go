@@ -1800,7 +1800,19 @@ func (d *Driver) shutdown() {
 		sess.Drop()
 	}
 	if conn != nil {
+		// THE SAME LOCK EVERY OTHER QMP TRANSACTION TAKES, AND `shutdown` WAS THE LAST ONE OUTSIDE IT.
+		//
+		// MEASURED ON THE POD, at `boot the disk`: `lab-test.sh` stops and destroys the previous
+		// machine before a run, which reaches this function - and this `Release` ran while the
+		// recorder's sampler was inside `qmpMu` doing an `Acquire`. The registry answered the BOOT
+		// with "this qmp socket is already held by this process", which is a sentence about a socket
+		// the boot had not opened yet.
+		//
+		// `Release` does its own locking of the MAP; what it cannot do on its own is hold off a
+		// caller who is in the middle of a transaction with the same socket.
+		d.qmpMu.Lock()
 		_ = d.qmpRegistry().Release(filepath.Join(d.work, "drive.sock.qmp"))
+		d.qmpMu.Unlock()
 	}
 	if proc != nil {
 		_ = proc.Process.Kill()
