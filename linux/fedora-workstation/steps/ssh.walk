@@ -370,10 +370,18 @@ walkthrough "linux-fedora-workstation - sshd"
   # `meta_l` LEAVES THE PREVIOUS CONTENT IN THE BOX, which is the whole difference: the wizard's last
   # keystrokes were still in it, so Return ran a search for a command line instead of starting a
   # program.
-  step "start from a clean desktop"
-    key == esc
-    settle == 2
-  press meta_l, waiting 3s, named "open the overview"
+  # THE OVERVIEW IS OPENED IN A LOOP, BECAUSE ONE `meta_l` IS NOT RELIABLY ENOUGH.
+  #
+  # MEASURED ON THE POD: a run whose screen at this point was a PLAIN DESKTOP - no overview - while
+  # the step before it had pressed `meta_l` and waited three seconds. The keystroke was accepted and
+  # the shell did not act on it. A single press with a fixed wait is a guess about a window manager's
+  # response, and on a guest still settling after its first login the guess was wrong.
+  #
+  # SO IT IS PRESSED UNTIL THE OVERVIEW IS VISIBLY UP, and the test is the overview's OWN search
+  # field: it says "Type to search" and nothing else on this desktop does. `max: 3` because a
+  # window manager that ignores three presses is not going to answer a fourth.
+  step "the overview is open"
+    loop == {check: {from: overview, mode: text, name: up, rect: [700, 30, 1220, 90], rect_at: [1920, 1080], scale: 1, words: [[type, to, search]]}, do: [{key: meta_l, settle: 3}], max: 3, see: {name: overview}, until: {fact: up}}
   # THE SEARCH BOX IS CLICKED BEFORE ANYTHING IS TYPED INTO IT, AND `meta_l` ALONE IS NOT ENOUGH.
   #
   # MEASURED ON THE POD: `meta_l` draws the overview with its search field showing "Type to search" -
@@ -460,15 +468,19 @@ walkthrough "linux-fedora-workstation - sshd"
   # and letting sudo keep the timestamp.
   step "unlock sudo once for this session"
     run == printf '%s\n' {{ password }} | sudo -S -v
+    type_gap == 0.12
     settle == 4
   step "install openssh-server"
     run == sudo dnf install -y openssh-server
+    type_gap == 0.12
     settle == 60
   step "allow password authentication"
     run == sudo sed -i "s/^#\?\s*PasswordAuthentication.*/PasswordAuthentication yes/" /etc/ssh/sshd_config ; sudo grep -i "^PasswordAuthentication" /etc/ssh/sshd_config
+    type_gap == 0.12
     settle == 3
   step "enable ssh at boot"
     run == sudo systemctl enable --now sshd
+    type_gap == 0.12
     settle == 8
   # FEDORA SHIPS firewalld ENABLED, AND IT DROPS 22 UNTIL THE SERVICE IS ALLOWED.
   #
@@ -477,12 +489,15 @@ walkthrough "linux-fedora-workstation - sshd"
   # is the standard rule and it is what the default zone publishes.
   step "open the firewall for ssh"
     run == sudo firewall-cmd --permanent --add-service=ssh
+    type_gap == 0.12
     settle == 4
   step "reload the firewall"
     run == sudo firewall-cmd --reload
+    type_gap == 0.12
     settle == 5
   step "show the zone's services"
     run == sudo firewall-cmd --list-services
+    type_gap == 0.12
     settle == 3
   step "wait for sshd"
     require_ssh == true
