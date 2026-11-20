@@ -93,7 +93,7 @@ type Executor struct {
 	// OnImage is told about each named picture, so the daemon can write its row.
 	OnImage func(name, sha, kind, step string, index, w, h int, rect []int, note string)
 
-// Journal receives one structured record per step - what it decided, what it read, and the
+	// Journal receives one structured record per step - what it decided, what it read, and the
 	// pictures it decided from. IT IS OPTIONAL: a nil satisfies it, and a test that builds an
 	// Executor by value gets a silent no-op.
 	//
@@ -725,8 +725,40 @@ func (e *Executor) doRequireSSH(s walk.Step) error {
 	if err != nil {
 		return fail(s.Name, "%v", err)
 	}
-	if err := guest.Probe(target, 3, 10*time.Second); err != nil {
-		return fail(s.Name, "the port is open but no shell answers: %v", err)
+	// THE PROBE IS RETRIED UNTIL THE STEP'S OWN TIMEOUT, BECAUSE "THE PORT IS OPEN" AND "IT
+	// AUTHENTICATES" HAPPEN AT DIFFERENT MOMENTS AND ONE TRY MEASURES ONLY THE FIRST.
+	//
+	// MEASURED ON THE POD, on openSUSE after sshd was started with a freshly corrected PAM stack:
+	//
+	//	wait for sshd: the port is open but no shell answers: ssh: handshake failed:
+	//	    ssh: unable to authenticate, attempted methods [none password keyboard-interactive]
+	//
+	// and the SAME `guest.Probe` against the SAME guest, run by hand a moment later:
+	//
+	//	Probe -> <nil>
+	//
+	// `Probe` tries its `attempts` DIALS but gives up on the first one that connects and then fails
+	// to run a command - and `WaitForPort` has already told us the port connects. So the sequence was:
+	// the socket accepted, sshd had not finished loading its PAM configuration, ONE authentication
+	// was refused, and the step failed on a machine that answered a second later.
+	//
+	// A `require_ssh:` SAYS "WAIT UNTIL SSH WORKS", so a single refusal is a reason to look again,
+	// not a verdict. The retry is bounded by the same `timeout:` the port wait used, and each attempt
+	// is logged so a genuinely broken guest still says so, once every two seconds, until the budget
+	// is gone.
+	probeDeadline := time.Now().Add(timeout)
+	var probeErr error
+	for {
+		if probeErr = guest.Probe(target, 3, 10*time.Second); probeErr == nil {
+			break
+		}
+		if time.Now().After(probeDeadline) {
+			return fail(s.Name, "the port is open but no shell answers after %s: %v",
+				time.Since(start).Round(time.Second), probeErr)
+		}
+		e.Driver.Log(fmt.Sprintf("  the port answers but authentication is refused (%v); retrying",
+			probeErr))
+		time.Sleep(2 * time.Second)
 	}
 	e.Driver.Log(fmt.Sprintf("  ssh answers on port %d after %s",
 		target.Port, time.Since(start).Round(time.Second)))
