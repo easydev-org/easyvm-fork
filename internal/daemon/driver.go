@@ -1791,6 +1791,27 @@ func (d *Driver) shutdown() {
 	proc := d.proc
 	d.proc = nil
 	d.booting = false
+	// THE FRAME TICKER IS STOPPED FIRST, BECAUSE IT IS STILL RUNNING AFTER THE WALK ENDED AND IT
+	// TAKES `qmpMu` ONCE A SECOND TO CAPTURE.
+	//
+	// `newFrameCache` starts a goroutine with a one-second ticker and a `stop` channel that NOTHING
+	// EVER CLOSES. So after a run finishes - successfully or not - the sampler keeps calling
+	// `captureOnce`, which reaches `qmpSocket` and `Acquire` under `qmpMu`. MEASURED on the pod, on
+	// the `stop` and `destroy` that `lab-test.sh` runs before the NEXT leg:
+	//
+	//	boot: this qmp socket is already held by this process (by "easyvm")
+	//
+	// - the next boot's `Acquire` found the sampler's claim, made a second after the previous run had
+	// ended and for a machine that no longer existed.
+	frames := d.frames
+	if frames != nil {
+		select {
+		case <-frames.stop:
+		default:
+			close(frames.stop)
+		}
+	}
+	d.frames = nil
 	d.mu.Unlock()
 
 	// EACH OF THESE IS DONE WITHOUT THE LOCK, because each one can block: closing a session, waiting
