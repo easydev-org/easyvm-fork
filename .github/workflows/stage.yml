@@ -393,6 +393,22 @@ jobs:
         # writes - both are facts about the job, so they are flags and not YAML.
         run: |
           set -eu
+          # THE PASSWORD IS A STAGE FACT, NOT A CONSTANT OF THIS WORKFLOW.
+          #
+          # THIS LINE USED TO READ `--password admin`, AND EVERY STAGE WHOSE DISK WAS BUILT WITH A
+          # DIFFERENT ONE FAILED AT ITS FIRST `require_ssh:` with
+          #
+          #	the port is open but no shell answers: ssh: unable to authenticate
+          #
+          # on a guest whose password, `su`, `sudo` and PAM were all correct. MEASURED on openSUSE
+          # Leap 16.1, whose Agama installer REFUSES `admin` - "The password is shorter than 8
+          # characters" - so the disk's password is `Qz7vLp2w` and this workflow had never been able
+          # to authenticate against it.
+          #
+          # `matrix.password` is optional and defaults to `admin`, which is what every other stage in
+          # this repository uses.
+          STAGE_PASSWORD="${{ matrix.password }}"
+          if [ -z "$STAGE_PASSWORD" ]; then STAGE_PASSWORD=admin; fi
           disk_args=""
           if [ -f "$GITHUB_WORKSPACE/work/disk.qcow2" ]; then
             disk_args="--boot-disk $GITHUB_WORKSPACE/work/disk.qcow2"
@@ -402,7 +418,7 @@ jobs:
             --work "$GITHUB_WORKSPACE/work" \
             $disk_args \
             --out "$GITHUB_WORKSPACE/work/${{ matrix.out }}" \
-            --password admin \
+            --password "$STAGE_PASSWORD" \
             || {
               echo "=== THE DAEMON REFUSED THE RUN ==="
               cat "$GITHUB_WORKSPACE/work/daemon.log"

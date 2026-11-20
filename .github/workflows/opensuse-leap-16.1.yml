@@ -110,6 +110,7 @@ jobs:
             "name": "linux-opensuse-leap-16.1-ssh",
             "file": "linux/opensuse-leap-16.1/steps/ssh.walk",
             "pull": "linux-opensuse-leap-16.1",
+            "password": "Qz7vLp2w",
             "out": "linux-opensuse-leap-16.1-ssh.qcow2",
             "timeout": 60,
             "publish": "linux-opensuse-leap-16.1-ssh"
@@ -130,6 +131,7 @@ jobs:
             "name": "linux-opensuse-leap-16.1-vm",
             "file": "linux/opensuse-leap-16.1/steps/vm-configure.walk",
             "pull": "linux-opensuse-leap-16.1-ssh",
+            "password": "Qz7vLp2w",
             "fallback": "linux-opensuse-leap-16.1",
             "out": "linux-opensuse-leap-16.1-vm.qcow2",
             "timeout": 60,
