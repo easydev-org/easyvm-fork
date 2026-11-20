@@ -958,6 +958,12 @@ func shorten(s string, n int) string {
 }
 
 // --- a host-side log, for a step that witnesses rather than judges ---------------------
+// retPause is the gap between the last character of a typed line and the Return that submits it.
+//
+// See the measurement in `doRun`: without it a text console received the Return before it had read
+// the line, and every command in the stage silently went nowhere.
+const retPause = 250 * time.Millisecond
+
 func (e *Executor) doRun(s walk.Step) error {
 	body := s.Get("run")
 	if strings.TrimSpace(body) == "" {
@@ -1008,6 +1014,23 @@ func (e *Executor) doRun(s walk.Step) error {
 			// guest with a message about ITS syntax rather than about this step.
 			e.Driver.Log(fmt.Sprintf("  COULD NOT TYPE %q on line %d", string(unsupported), i+1))
 		}
+		// A PAUSE BEFORE RETURN, BECAUSE A KEYSTROKE SENT IN THE SAME BREATH AS THE LAST CHARACTER
+		// IS A KEYSTROKE THE GUEST'S LINE DISCIPLINE MAY NOT HAVE READ YET.
+		//
+		// MEASURED ON THE POD, on openSUSE's tty1: every `run:` step typed its command and the screen
+		// showed the commands STACKED, one after another, with NO OUTPUT FROM ANY OF THEM -
+		//
+		//	vmuser@localhost:> sudo zypper --non-interactive ... install openssh 2>&1 | tail -5
+		//	sudo mkdir -p /etc/ssh/sshd_config.d /run/sshd
+		//	sudo sh -c "test -f /etc/ssh/sshd_config || cp ..."
+		//
+		// - no `[sudo] password` line, no zypper output, nothing. The Returns had not been delivered,
+		// so the text sat in one long input line and the stage's `wait for sshd` then failed on a
+		// port, which is several steps away from the cause.
+		//
+		// A person typing does not press Return in the same millisecond as the last character. This
+		// pause is that gap, and it costs one step's worth of time rather than a ten-minute timeout.
+		time.Sleep(retPause)
 		if err := e.Driver.Key("ret"); err != nil {
 			return fail(s.Name, "pressing Return after line %d: %v", i+1, err)
 		}
