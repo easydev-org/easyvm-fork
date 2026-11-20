@@ -380,8 +380,28 @@ walkthrough "linux-fedora-workstation - sshd"
   # SO IT IS PRESSED UNTIL THE OVERVIEW IS VISIBLY UP, and the test is the overview's OWN search
   # field: it says "Type to search" and nothing else on this desktop does. `max: 3` because a
   # window manager that ignores three presses is not going to answer a fourth.
+  # THE WELCOME TOUR SITS ON TOP OF EVERYTHING AND MUST GO FIRST.
+  #
+  # MEASURED ON THE POD, on the first login after the wizard finished:
+  #
+  #	Welcome to Fedora Linux 45 (Workstation Edition)
+  #	If you want to learn your way around, check out the tour
+  #	[ Skip ]  [ Take Tour ]
+  #
+  # It is a modal dialog and it stays there, and the overview opens UNDER it - so every search would
+  # go into a window that is not on top. `Skip` is the button that dismisses it and it is focused when
+  # the dialog opens, so Return presses it.
+  #
+  # AND NOTHING ELSE IS PRESSED HERE. An earlier version of this step began with `esc`, on the
+  # reasoning that it would close anything left open - MEASURED, that LOCKED THE SESSION and the
+  # screen became GDM's password box, from which the rest of the stage could not proceed at all.
+  step "dismiss the welcome tour"
+    do == [{key: ret, settle: 3}]
   step "the overview is open"
-    loop == {check: {from: overview, mode: text, name: up, rect: [700, 30, 1220, 90], rect_at: [1920, 1080], scale: 1, words: [[type, to, search]]}, do: [{key: meta_l, settle: 3}], max: 3, see: {name: overview}, until: {fact: up}}
+    # THE RECT IS MEASURED, NOT THE WIDEST BOX THAT LOOKS RIGHT. tesseract on a frame of this
+    # screen: `[700, 30, 1220, 90]` returns NOTHING while `[780, 40, 1150, 85]` reads
+    # "Type to search". A gate that cannot see the words it waits for fails for ever, quietly.
+    loop == {check: {from: overview, mode: text, name: up, rect: [780, 40, 1150, 85], rect_at: [1920, 1080], scale: 1, words: [[type, to, search]]}, do: [{key: meta_l, settle: 3}], max: 3, see: {name: overview}, until: {fact: up}}
   # THE SEARCH BOX IS CLICKED BEFORE ANYTHING IS TYPED INTO IT, AND `meta_l` ALONE IS NOT ENOUGH.
   #
   # MEASURED ON THE POD: `meta_l` draws the overview with its search field showing "Type to search" -
