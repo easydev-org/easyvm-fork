@@ -112,7 +112,13 @@ jobs:
 
   setup:
     needs: room
-    if: always() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.from_tag == '' || inputs.from_tag == 'macos26')
+    # `from_tag: macos26` MEANS "THE SETUP DISK IS ALREADY PUBLISHED, START AT SSH" - the comment at
+    # the top of this file says so - and this condition used to include `macos26`, which made it run
+    # setup AGAIN. MEASURED: a dispatch with `from_tag=macos26` spent its whole budget re-running the
+    # 90-minute copy and never reached ssh.
+    #
+    # ONLY AN EMPTY `from_tag` STARTS A CHAIN FROM THE BEGINNING.
+    if: always() && !cancelled() && (github.event_name != 'workflow_dispatch' || inputs.from_tag == '')
     uses: ./.github/workflows/stage.yml
     secrets: inherit
     with:
