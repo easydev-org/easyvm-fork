@@ -290,9 +290,25 @@ func (d *Driver) frame() (run.Frame, error) {
 
 // frameCache starts the cache on first use, so a driver built by a test that never looks at the
 // screen pays for no ticker.
+//
+// AND IT STARTS ONLY WHEN THERE IS A MACHINE TO LOOK AT. MEASURED ON THE POD, on a fresh pod with a
+// fresh disk:
+//
+//	boot: this qmp socket is already held by this process (by "easyvm")
+//
+// The sampler was rebuilt by `/api/state` AFTER `shutdown` had stopped it: `shutdown` clears
+// `d.frames`, and the next status poll called `Frame()`, which called this and made a NEW ticker.
+// That ticker's first capture reached `qmpSocket` and `Acquire`d the registry entry the boot was
+// about to claim - so a status poll between `destroy` and `boot` is enough to break the next boot.
+//
+// A STATUS POLL IS NOT A REQUEST TO RECORD. With no machine there is nothing to capture, and
+// starting a timer to capture it is how an observation becomes a side effect.
 func (d *Driver) frameCache() *frameCache {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	if d.proc == nil {
+		return nil
+	}
 	if d.frames == nil {
 		d.frames = newFrameCache(func() (cachedFrame, error) {
 			d.frameMu.Lock()
