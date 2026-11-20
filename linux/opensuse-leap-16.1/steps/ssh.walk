@@ -400,7 +400,20 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # distribution ships `try_first_pass` because a graphical greeter collects the password before PAM
   # runs; an sshd session does not.
   step "let pam_unix take the password sshd was given, instead of looking for one already collected"
-    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "sed -i 's/ try_first_pass//' /etc/pam.d/common-auth; tail -1 /etc/pam.d/common-auth"
+    # THE SED EXPRESSION CARRIES NO QUOTES, BECAUSE THE QUOTED FORM SILENTLY DID NOTHING.
+    #
+    # MEASURED ON THE POD: this step ran and the file still ended in
+    #
+    #	auth required pam_unix.so try_first_pass
+    #
+    # The expression was `sed -i 's/ try_first_pass//'` inside a `sh -c "..."` - the outer double
+    # quotes pass the single quotes through as ORDINARY CHARACTERS, so sed saw a pattern that
+    # matched nothing and exited 0. A no-op that reports success is worse than a failure: the step
+    # after it then waits ten minutes for an authentication this one was supposed to have fixed.
+    #
+    # `s/try_first_pass//` needs no quotes at all - the string has no whitespace - and it worked on
+    # the same guest, leaving `auth required pam_unix.so`.
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "sed -i s/try_first_pass// /etc/pam.d/common-auth; tail -1 /etc/pam.d/common-auth"
     type_gap == 0.12
     settle == 4
     terminal_wait == 0
