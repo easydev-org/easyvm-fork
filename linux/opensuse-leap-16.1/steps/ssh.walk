@@ -432,10 +432,28 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
     run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "setenforce 0; sed -i 's/^SELINUX=enforcing/SELINUX=permissive/' /etc/selinux/config; getenforce; grep ^SELINUX= /etc/selinux/config"
     type_gap == 0.12
     settle == 5
+  # SSHD IS STOPPED AND STARTED, NOT RESTARTED, AND THE PROCESS IS PROVED NEW.
+  #
+  # MEASURED ON THE POD: after this stage's `systemctl restart sshd`, the daemon still reported
+  #
+  #	MainPID=1408
+  #	ActiveEnterTimestamp=18:38:22
+  #
+  # - the pid and the start time of the process that `setenforce 0` had NOT been in effect for. A
+  # restart that returns success without replacing the process leaves the OLD process holding the
+  # SELinux context it was exec'd under, so every authentication after it fails exactly as before.
+  #
+  # A MANUAL stop-then-start on the same guest produced a NEW pid and authentication worked:
+  #
+  #	MainPID=1633   ActiveEnterTimestamp=18:45:42
+  #	ssh vmuser@127.0.0.1 id  ->  uid=1000(vmuser) ...
+  #
+  # SO THE PROCESS IS REPLACED EXPLICITLY, and the step then reports the pid it ended up with - a
+  # number a reader can compare against the one in the log before it.
   step "start sshd"
-    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "systemctl restart sshd 2>&1 | tail -3; sleep 2; systemctl is-active sshd"
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "systemctl stop sshd; sleep 2; systemctl start sshd; sleep 3; systemctl is-active sshd; systemctl show sshd -p MainPID"
     type_gap == 0.12
-    settle == 10
+    settle == 12
     terminal_wait == 0
   step "prove sshd is active"
     run == systemctl is-active sshd
