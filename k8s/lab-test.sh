@@ -67,5 +67,24 @@ echo "=== copy the parent in"
 rm -f /work/disk.qcow2
 cp "$src" /work/disk.qcow2
 
+# THE PASSWORD IS A RUN FACT, NOT A FILE FACT, AND OMITTING IT COST THIS HARNESS EVERY SSH STEP.
+#
+# `Executor.Password` comes from the REQUEST (`req.Password`), not from the walkthrough's own
+# `password:` header - the file declares the value a stage uses for `sudo`, and the request supplies
+# what the daemon should authenticate with. Without `--password` the engine dialled sshd with an
+# EMPTY password, and every `require_ssh:` reported
+#
+#	the port is open but no shell answers: ssh: unable to authenticate
+#
+# on a guest whose password, `su`, `sudo` and `pam_unix` were all correct. MEASURED on openSUSE: the
+# same `guest.Dial` with the password hardcoded returned `OK out="vmuser" status=0` while the leg
+# failed, and the only difference was this flag.
+#
+# IT DEFAULTS TO THE DISK'S OWN PASSWORD FOR THIS REPOSITORY, and can be overridden the same way as
+# the binary:
+#
+#	PW=something-else k8s/lab-test.sh <os> <leg> <walk>
+PW=${PW:-Qz7vLp2w}
+
 echo "=== run $walk"
-exec "$EV" run "$walk" --work /work --boot-disk /work/disk.qcow2
+exec "$EV" run "$walk" --work /work --boot-disk /work/disk.qcow2 --password "$PW"
