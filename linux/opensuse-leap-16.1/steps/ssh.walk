@@ -371,6 +371,39 @@ walkthrough "linux-opensuse-tumbleweed - sshd"
   # AND IT IS CHECKED, LINE BY LINE, BECAUSE A HALF-WRITTEN FILE IS THE FAILURE MODE THAT COSTS TEN
   # MINUTES TO FIND. `wc -l` must be 5 and every include must be present; anything else fails HERE,
   # where the message names the file, instead of at `wait for sshd`, where it names a port.
+  # `try_first_pass` COMES OFF `common-auth`, AND THAT IS THE LAST OF FOUR REASONS SSH REFUSED.
+  #
+  # The module line this image ships is:
+  #
+  #	auth required pam_unix.so try_first_pass
+  #
+  # `try_first_pass` tells pam_unix to USE A PASSWORD AN EARLIER MODULE ALREADY COLLECTED and never to
+  # prompt for one. When there is no earlier module there is nothing to try - and sshd's
+  # keyboard-interactive exchange is exactly that case: the client answers the questions, PAM hands
+  # the answers to the stack, and `try_first_pass` looks for a password where there is none.
+  #
+  # MEASURED ON ONE GUEST with the PAM file present, SELinux permissive and sshd freshly started:
+  #
+  #	inside the guest   ssh -o PreferredAuthentications=password vmuser@127.0.0.1 id
+  #	                   -> uid=1000(vmuser)            WORKS: that client offers `password`, so
+  #	                                                  pam_unix is handed the secret
+  #	from the daemon    guest.Dial(...); Run("id -un")
+  #	                   -> Permission denied           the engine's client advertises
+  #	                                                  keyboard-interactive too, and that is the
+  #	                                                  method sshd negotiates
+  #
+  # Removing the flag made the ENGINE'S OWN CLIENT succeed on the same guest:
+  #
+  #	OK out="vmuser\n" status=0 err=<nil>
+  #
+  # PLAIN `pam_unix.so` PROMPTS WHEN IT HAS NOTHING CACHED, which is what a login service needs. The
+  # distribution ships `try_first_pass` because a graphical greeter collects the password before PAM
+  # runs; an sshd session does not.
+  step "let pam_unix take the password sshd was given, instead of looking for one already collected"
+    run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c "sed -i 's/ try_first_pass//' /etc/pam.d/common-auth; tail -1 /etc/pam.d/common-auth"
+    type_gap == 0.12
+    settle == 4
+    terminal_wait == 0
   step "the PAM stack is complete"
     run == printf '%s\n' {{ password }} | sudo -S -p '' sh -c 'test $(wc -l < /etc/pam.d/sshd) -eq 5 && grep -c include /etc/pam.d/sshd'
 
