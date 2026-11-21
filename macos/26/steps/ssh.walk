@@ -160,141 +160,24 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # SO THE CHECK ASKS FOR THE OVERVIEW BY ITS OWN HEADING, and the list is then scrolled to the bottom
   # where Remote Login lives. `content & media` appears on this page and nowhere else in Settings.
-  # REMOTE LOGIN IS ITS OWN PAGE IN THIS LIST, AND THE SHARING OVERVIEW DOES NOT CONTAIN IT.
+  # REMOTE LOGIN IS ITS OWN PAGE, AND THE SIDEBAR ROW OPENS IT BY DOUBLE CLICK.
   #
-  # MEASURED on run 44889704697's recording, which ends on the Sharing OVERVIEW while the sidebar
-  # shows `Remote login` HIGHLIGHTED:
+  # MEASURED ACROSS RUNS - the SAME single click at (703, 340):
   #
-  #	Content & Media      File / Media / Screen Sharing, Content Caching
-  #	Accessories & Internet   Bluetooth / Printer / Internet Sharing
-  #	Advanced             Remote Management
+  #	44884134179   opened Remote Login's own page   "Login: oft ... rising SSH ond SFTP"
+  #	44889704697   left the Sharing OVERVIEW up     row already selected
+  #	44910865639   left the Sharing OVERVIEW up     row already selected
+  #	44917390363   click + Return, still the OVERVIEW
   #
-  # THERE IS NO REMOTE LOGIN SWITCH ANYWHERE ON THAT PAGE - it is not a row of the overview, it is a
-  # SIBLING page the sidebar opens. So scrolling the overview, as the previous version did, could
-  # never reach it, and the switch that `wait for sshd` needed was never thrown.
-  #
-  # AND THE PAGE THAT DID OPEN ONCE (run 44884134179, `Login: oft ... rising SSH ond SFTP`) proves the
-  # click works - it is the OVERVIEW that sometimes wins, because the sidebar and the detail pane are
-  # drawn independently and a click can land between them.
-  #
-  # SO THE CLICK IS REPEATED UNTIL THE DETAIL PAGE'S OWN SENTENCE IS ON SCREEN. `using ssh and sftp`
-  # is in Remote Login's description and nowhere else; the overview does not contain it.
-  # THE ROW IS OPENED BY KEYBOARD, BECAUSE CLICKING IT TOGGLES BETWEEN TWO PANES.
-  #
-  # MEASURED ACROSS RUNS: a click at (703, 340) sometimes opens Remote Login's own page
-  # (44884134179 read "Login: oft ... rising SSH ond SFTP") and sometimes leaves the Sharing OVERVIEW
-  # on screen with the row already selected (44889704697, 44910865639). The row is a SELECTION in a
-  # list whose detail pane is drawn separately, so a second click on an already-selected row moves the
-  # focus back to the overview - and clicking it again, as a retry loop does, is exactly that second
-  # click.
-  #
-  # TEN RUNS AT THE PANE, AND THE EVIDENCE CANNOT BE RECONCILED BY ANOTHER COORDINATE:
-  #
-  #	44884134179  click (703,340)  -> Remote Login's own page   "Login: oft ... rising SSH ond SFTP"
-  #	44889704697  click (703,340)  -> the Sharing OVERVIEW       row already selected
-  #	44910865639  click (703,340)  -> the Sharing OVERVIEW       row already selected
-  #	44917390363  click + Return   -> the Sharing OVERVIEW       Return did not open it either
-  #
-  # The same gesture produces both outcomes, and every failed variant costs fifty minutes of wizard to
-  # re-test. A GUI is a VIEW of a setting; driving the view has been the least reliable part of this
-  # stage, and what the stage exists to establish is that SSH ANSWERS - which `wait for sshd` measures
-  # directly and which no settings window can fake.
-  #
-  # SO THE SETTING IS MADE FROM A TERMINAL, WITH THE COMMAND APPLE DOCUMENTS:
-  #
-  #	sudo systemsetup -setremotelogin on
-  # THE SETTINGS WINDOW IS CLOSED FIRST, BECAUSE SPOTLIGHT OPENS BEHIND IT.
-  #
-  # MEASURED on run 44924098566: `meta_l+spc` then `terminal` then Return, and the screen afterwards
-  # was still System Settings' Sharing pane -
-  #
-  #	it is a shell [check]: ready = false (none of "terminalready" in "ja Sharing @ len Sharing ...")
-  #
-  # The keystrokes went into the settings window, which was in front. `meta_l+q` is the standard
-  # close-window shortcut and it is the one gesture that does not depend on where a window is.
-  step "close the settings window"
-    key == meta_l+q
-    settle == 4
-  step "open a terminal on the desktop"
-    key == meta_l+spc
-    settle == 5
-  step "type the terminal's name"
-    type == terminal
-    settle == 5
-  press Return, waiting 16s, named "open Terminal"
-  # THE KEYBOARD SETUP ASSISTANT SITS ON TOP OF THE TERMINAL AND EATS ITS KEYSTROKES.
-  #
-  # MEASURED on run 44930546218: the terminal DID open and DID run the command -
-  #
-  #	vmuser@vmusers-iMac ~ % echo TERMINAL_READY
-  #	TERMINAL_READY
-  #
-  # - and the check still failed, because a modal "Keyboard Setup Assistant" window covered the lower
-  # two thirds of the screen and the rectangle framed the text it was covering:
-  #
-  #	it is a shell [check]: ready = false (none of "terminalready" in "fant dt be identified and ...
-  #	    will not be i Ing ...")
-  #
-  # `Quit` is the left button and it is at a fixed place in this dialog. macOS 15's stage met the same
-  # assistant and quit it the same way; this stage never did.
-  step "quit the keyboard assistant, if it is up"
-    loop == {check: {from: screen, mode: text, name: kbd, rect: [540, 400, 1360, 760], rect_at: [1920, 1080], scale: 1, words: [[keyboard, setup]]}, do: [{click: [1130, 818], settle: 4}], max: 3, see: {name: screen}, until: {fact: kbd}}
-    optional == true
-  # THE TERMINAL IS CLICKED BEFORE ANYTHING IS TYPED INTO IT, BECAUSE A FRESH WINDOW DOES NOT
-  # NECESSARILY HAVE THE KEYBOARD.
-  #
-  # MEASURED on run 44935131156: the prompt WAS on screen -
-  #
-  #	ee ee oe ee vmuser@vmusers-iMac ~ % []
-  #
-  # - and `echo TERMINAL_READY` produced nothing. The window was drawn, the shell was running, and the
-  # keystrokes went to the Finder behind it. This is the same shape as the fedora stage's terminal: the
-  # window has to be given the keyboard before its prompt is evidence of anything.
-  step "click the terminal window"
-    click == [500, 300]
-    settle == 2
-  step "the terminal answers"
-    run == echo TERMINAL_READY
-    type_gap == 0.12
-    settle == 4
-  step "it is a shell"
-    # THE WHOLE WINDOW, BECAUSE ITS POSITION IS NOT FIXED. macOS opens Terminal centred on the
-    # desktop, and the prompt sits at the window's top-left - so a rectangle pinned to one corner is a
-    # rectangle that misses whenever the window is a little larger or a little higher. The token is
-    # unique, so a wide box costs nothing but a slower read.
-    # THE TERMINAL'S OWN WINDOW, MEASURED FROM THE FRAME WHERE IT WAS VISIBLE: x 42..920, y 60..545,
-    # with the prompt and the token at the top. A box over the whole screen reads the dialog on top of
-    # it - and the WINDOW is what this step is about.
-    loop == {check: {from: shell, mode: text, name: ready, rect: [45, 95, 915, 200], rect_at: [1920, 1080], scale: 1, words: [[terminalready]]}, do: [{settle: 3}], max: 10, see: {name: shell}, until: {fact: ready}}
-  # THE SETTING IS TURNED ON AND THEN READ BACK, and the reading is what a reader gets to see -
-  # `systemsetup` needs Full Disk Access to WRITE on a fresh install and may refuse, while the port
-  # check after it is the only claim this stage makes that cannot be faked.
-  # `systemsetup` REFUSES WITHOUT FULL DISK ACCESS, AND `launchctl` DOES NOT.
-  #
-  # MEASURED on run 44939909558, whose terminal holds both commands and both answers:
-  #
-  #	printf '%s\n' 'admin' | sudo -S systemsetup -setremotelogin on 2>&1 | tail -3
-  #	setremotelogin: Turning Remote Login on or off requires Full Disk Access privileges.
-  #
-  #	systemsetup -getremotelogin 2>&1 | tail -2
-  #	You need administrator access to run this tool... exiting!
-  #
-  # REMOTE LOGIN IS A LAUNCHD SERVICE. `systemsetup` is a wrapper that also writes the preference
-  # bundle, and THIS image gates the wrapper behind a TCC permission that a fresh install has not
-  # granted to Terminal. The service itself starts by loading its plist, which needs root and nothing
-  # else:
-  #
-  #	launchctl load -w /System/Library/LaunchDaemons/ssh.plist
-  #
-  # `-w` makes it survive a reboot, which is what the `-setremotelogin on` would have done.
-  step "load the sshd service, which is what the switch actually does"
-    run == printf '%s\n' '{{ password }}' | sudo -S launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>&1 | tail -3
-    type_gap == 0.12
+  # A single click on a row that is ALREADY SELECTED does nothing - and the row is selected as soon as
+  # the search filters to it, which is why the first click after a search sometimes lands as a
+  # de-selection. A DOUBLE CLICK is the gesture macOS lists use to OPEN the selected row, and it works
+  # whether or not the row was selected a moment before.
+  step "open the remote login page"
+    double == [703, 340]
     settle == 8
-  step "ask the service what it says"
-    run == printf '%s\n' '{{ password }}' | sudo -S launchctl list 2>&1 | grep -c com.openssh.sshd; printf '%s\n' '{{ password }}' | sudo -S lsof -nP -iTCP:22 -sTCP:LISTEN 2>&1 | tail -2
-    type_gap == 0.12
-    settle == 5
+  step "the remote login page is up"
+    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[ssh, and, sftp]]}, do: [{double: [703, 340], settle: 6}], max: 4, see: {name: screen}, until: {fact: pane}}
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
   #
   # MEASURED on run 44854479046's recording, whose last ten minutes are the pane with the switch
@@ -363,7 +246,9 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # THE PROOF THAT THE SWITCH TOOK IS `wait for sshd` BELOW: sshd is started by that switch and by
   # nothing else, so a port that answers is the state this step cannot fake.
-  click "close the pane" at 1145 679, waiting 5s, named "close the pane"
+  # THE PANE IS NOT CLOSED: `Done` is at a fixed place only while the pane is in the same state, and
+  # nothing after this step needs the window gone. `wait for sshd` reaches the guest over the network,
+  # not through Settings.
   step "wait for sshd"
     require_ssh == true
     timeout == 600
