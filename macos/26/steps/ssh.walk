@@ -96,6 +96,21 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
     when_not == [allow, full, disk, access]
   step "the remote login pane is up"
     loop == {check: {from: screen, mode: text, name: done, rect: [726, 300, 1200, 715], rect_at: [1920, 1080], scale: 2, words: [[allow, full, disk, access]]}, do: [{settle: 3}], max: 30, see: {name: screen}, until: {fact: done}}
+  # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
+  #
+  # MEASURED on run 44854479046's recording, whose last ten minutes are the pane with the switch
+  # still OFF while `wait for sshd` reported `connection refused`:
+  #
+  #	Remote Login: Off                                   <- this line, y ~389
+  #	                                  [ ⚪ ]             <- THE SWITCH, x 1128..1152
+  #	Allow full disk access for remote users   [ ⚪ ]
+  #
+  # The click was at (1145, 353), which is above that entire row - between the pane's title and the
+  # first switch - and it did nothing. Pixel-scanning the switch's own track on that frame puts its
+  # centre at (1140, 389).
+  step "turn remote login on"
+    click == [1140, 389]
+    settle == 5
   # TURNING REMOTE LOGIN ON RAISES AN AUTHORISATION DIALOG, AND THE OLD STEPS WALKED PAST IT.
   #
   # MEASURED on run 44679850735's recording, whose last fifty minutes are this one screen:
