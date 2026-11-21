@@ -269,12 +269,30 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # THE SETTING IS TURNED ON AND THEN READ BACK, and the reading is what a reader gets to see -
   # `systemsetup` needs Full Disk Access to WRITE on a fresh install and may refuse, while the port
   # check after it is the only claim this stage makes that cannot be faked.
-  step "turn remote login on from the command line"
-    run == printf '%s\n' '{{ password }}' | sudo -S systemsetup -setremotelogin on 2>&1 | tail -3
+  # `systemsetup` REFUSES WITHOUT FULL DISK ACCESS, AND `launchctl` DOES NOT.
+  #
+  # MEASURED on run 44939909558, whose terminal holds both commands and both answers:
+  #
+  #	printf '%s\n' 'admin' | sudo -S systemsetup -setremotelogin on 2>&1 | tail -3
+  #	setremotelogin: Turning Remote Login on or off requires Full Disk Access privileges.
+  #
+  #	systemsetup -getremotelogin 2>&1 | tail -2
+  #	You need administrator access to run this tool... exiting!
+  #
+  # REMOTE LOGIN IS A LAUNCHD SERVICE. `systemsetup` is a wrapper that also writes the preference
+  # bundle, and THIS image gates the wrapper behind a TCC permission that a fresh install has not
+  # granted to Terminal. The service itself starts by loading its plist, which needs root and nothing
+  # else:
+  #
+  #	launchctl load -w /System/Library/LaunchDaemons/ssh.plist
+  #
+  # `-w` makes it survive a reboot, which is what the `-setremotelogin on` would have done.
+  step "load the sshd service, which is what the switch actually does"
+    run == printf '%s\n' '{{ password }}' | sudo -S launchctl load -w /System/Library/LaunchDaemons/ssh.plist 2>&1 | tail -3
     type_gap == 0.12
     settle == 8
-  step "ask what the setting now says"
-    run == systemsetup -getremotelogin 2>&1 | tail -2
+  step "ask the service what it says"
+    run == printf '%s\n' '{{ password }}' | sudo -S launchctl list 2>&1 | grep -c com.openssh.sshd; printf '%s\n' '{{ password }}' | sudo -S lsof -nP -iTCP:22 -sTCP:LISTEN 2>&1 | tail -2
     type_gap == 0.12
     settle == 5
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
