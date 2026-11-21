@@ -85,7 +85,16 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
     # `remote` IS in that string and is the word that matters: this stage is looking for the Remote
     # login result, and a sidebar showing it cannot show it without that substring. The scale is 1 so
     # the reader gets whole lines rather than a magnified fragment.
-    loop == {check: {from: screen, mode: text, name: found, rect: [610, 250, 830, 420], rect_at: [1920, 1080], scale: 1, words: [[remote]]}, do: [{click: [715, 323], settle: 2}, {type: remote login, settle: 3}], max: 4, see: {name: screen}, until: {fact: found}}
+    # THE FIELD, NOT THE LIST, AND THE DIFFERENCE IS MEASURED. On run 44905549978's final frame the
+    # Remote Login panel is OPEN and the sidebar behind it is covered:
+    #
+    #	[615, 262, 800, 285]  ->  "Q. remote login"     THE FIELD, with the text in it
+    #	[610, 250, 830, 420]  ->  ""                    the list, covered by the panel
+    #
+    # So a check on the list fails exactly when the stage is doing well - and that is the wrong way
+    # round for a gate. What this step has to establish is "the text reached the field", and the field
+    # says so whether or not a panel is over the list.
+    loop == {check: {from: screen, mode: text, name: found, rect: [615, 262, 800, 285], rect_at: [1920, 1080], scale: 1, words: [[remote]]}, do: [{click: [715, 323], settle: 2}, {type: remote login, settle: 3}], max: 4, see: {name: screen}, until: {fact: found}}
   # THE SEARCH NEEDS A RETURN, AND THE RESULT LIST IS EMPTY WITHOUT ONE.
   #
   # MEASURED on run 44830318447, whose recording ends on System Settings with `remote login` typed in
