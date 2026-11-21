@@ -222,6 +222,24 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
     type == terminal
     settle == 5
   press Return, waiting 16s, named "open Terminal"
+  # THE KEYBOARD SETUP ASSISTANT SITS ON TOP OF THE TERMINAL AND EATS ITS KEYSTROKES.
+  #
+  # MEASURED on run 44930546218: the terminal DID open and DID run the command -
+  #
+  #	vmuser@vmusers-iMac ~ % echo TERMINAL_READY
+  #	TERMINAL_READY
+  #
+  # - and the check still failed, because a modal "Keyboard Setup Assistant" window covered the lower
+  # two thirds of the screen and the rectangle framed the text it was covering:
+  #
+  #	it is a shell [check]: ready = false (none of "terminalready" in "fant dt be identified and ...
+  #	    will not be i Ing ...")
+  #
+  # `Quit` is the left button and it is at a fixed place in this dialog. macOS 15's stage met the same
+  # assistant and quit it the same way; this stage never did.
+  step "quit the keyboard assistant, if it is up"
+    loop == {check: {from: screen, mode: text, name: kbd, rect: [540, 400, 1360, 760], rect_at: [1920, 1080], scale: 1, words: [[keyboard, setup]]}, do: [{click: [1130, 818], settle: 4}], max: 3, see: {name: screen}, until: {fact: kbd}}
+    optional == true
   step "the terminal answers"
     run == echo TERMINAL_READY
     type_gap == 0.12
@@ -231,7 +249,10 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
     # desktop, and the prompt sits at the window's top-left - so a rectangle pinned to one corner is a
     # rectangle that misses whenever the window is a little larger or a little higher. The token is
     # unique, so a wide box costs nothing but a slower read.
-    loop == {check: {from: shell, mode: text, name: ready, rect: [200, 150, 1720, 950], rect_at: [1920, 1080], scale: 1, words: [[terminalready]]}, do: [{settle: 3}], max: 10, see: {name: shell}, until: {fact: ready}}
+    # THE TERMINAL'S OWN WINDOW, MEASURED FROM THE FRAME WHERE IT WAS VISIBLE: x 42..920, y 60..545,
+    # with the prompt and the token at the top. A box over the whole screen reads the dialog on top of
+    # it - and the WINDOW is what this step is about.
+    loop == {check: {from: shell, mode: text, name: ready, rect: [45, 95, 915, 200], rect_at: [1920, 1080], scale: 1, words: [[terminalready]]}, do: [{settle: 3}], max: 10, see: {name: shell}, until: {fact: ready}}
   # THE SETTING IS TURNED ON AND THEN READ BACK, and the reading is what a reader gets to see -
   # `systemsetup` needs Full Disk Access to WRITE on a fresh install and may refuse, while the port
   # check after it is the only claim this stage makes that cannot be faked.
