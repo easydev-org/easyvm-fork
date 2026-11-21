@@ -203,19 +203,35 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # SO THE SETTING IS MADE FROM A TERMINAL, WITH THE COMMAND APPLE DOCUMENTS:
   #
   #	sudo systemsetup -setremotelogin on
+  # THE SETTINGS WINDOW IS CLOSED FIRST, BECAUSE SPOTLIGHT OPENS BEHIND IT.
+  #
+  # MEASURED on run 44924098566: `meta_l+spc` then `terminal` then Return, and the screen afterwards
+  # was still System Settings' Sharing pane -
+  #
+  #	it is a shell [check]: ready = false (none of "terminalready" in "ja Sharing @ len Sharing ...")
+  #
+  # The keystrokes went into the settings window, which was in front. `meta_l+q` is the standard
+  # close-window shortcut and it is the one gesture that does not depend on where a window is.
+  step "close the settings window"
+    key == meta_l+q
+    settle == 4
   step "open a terminal on the desktop"
     key == meta_l+spc
-    settle == 4
+    settle == 5
   step "type the terminal's name"
     type == terminal
-    settle == 4
-  press Return, waiting 14s, named "open Terminal"
+    settle == 5
+  press Return, waiting 16s, named "open Terminal"
   step "the terminal answers"
     run == echo TERMINAL_READY
     type_gap == 0.12
     settle == 4
   step "it is a shell"
-    loop == {check: {from: shell, mode: text, name: ready, rect: [595, 325, 1330, 480], rect_at: [1920, 1080], scale: 1, words: [[terminalready]]}, do: [{settle: 3}], max: 8, see: {name: shell}, until: {fact: ready}}
+    # THE WHOLE WINDOW, BECAUSE ITS POSITION IS NOT FIXED. macOS opens Terminal centred on the
+    # desktop, and the prompt sits at the window's top-left - so a rectangle pinned to one corner is a
+    # rectangle that misses whenever the window is a little larger or a little higher. The token is
+    # unique, so a wide box costs nothing but a slower read.
+    loop == {check: {from: shell, mode: text, name: ready, rect: [200, 150, 1720, 950], rect_at: [1920, 1080], scale: 1, words: [[terminalready]]}, do: [{settle: 3}], max: 10, see: {name: shell}, until: {fact: ready}}
   # THE SETTING IS TURNED ON AND THEN READ BACK, and the reading is what a reader gets to see -
   # `systemsetup` needs Full Disk Access to WRITE on a fresh install and may refuse, while the port
   # check after it is the only claim this stage makes that cannot be faked.
