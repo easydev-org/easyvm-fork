@@ -75,9 +75,20 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
     # FIELD'S HEIGHT. What has to be true is "a result named Sharing is in the list", and a rectangle
     # that frames the list is the honest way to ask that.
     loop == {check: {from: screen, mode: text, name: done, rect: [610, 250, 830, 780], rect_at: [1920, 1080], scale: 2, words: [[sharing]]}, do: [{settle: 3}], max: 20, see: {name: screen}, until: {fact: done}}
-  click "open the remote login pane" at 703 336, waiting 12s, named "open the remote login pane"
+  # THE RESULT IS TWO ROWS UNDER A HEADING, AND [703, 336] LANDED BETWEEN THEM.
+  #
+  # MEASURED on run 44846410525's recording, whose search DID work after `Cmd+F`:
+  #
+  #	[ remote login            ]
+  #	⚙ Sharing                 <- the group heading, y ~364
+  #	    Remote login          <- THE RESULT,        y ~392
+  #
+  # The click at (703, 336) was above the heading, on the empty strip between the search field and the
+  # list, so the window stayed on General - and the next check, which looks for the pane's own
+  # "Allow full disk access" row, spent its whole budget describing General.
+  click "open the remote login pane" at 703 392, waiting 12s, named "open the remote login pane"
   step "open the remote login pane again"
-    click == [703, 336]
+    click == [703, 392]
     rect == [726, 300, 1200, 715]
     rect_at == [1920, 1080]
     scale == 2
