@@ -180,11 +180,24 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   step "select the remote login row"
     click == [703, 340]
     settle == 4
-  step "put the focus in the detail pane"
-    click == [1000, 300]
-    settle == 2
-  step "scroll to the remote login section"
-    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1400, 780], rect_at: [1920, 1080], scale: 1, words: [[ssh, and, sftp]]}, do: [{key: pgdn, settle: 3}], max: 8, see: {name: screen}, until: {fact: pane}}
+  # THE PAGE IS SCROLLED BY CLICKING ITS SCROLLBAR, BECAUSE A KEY DOES NOT REACH IT.
+  #
+  # MEASURED on run 44952965228's final frame, which is the clearest picture of this window so far:
+  #
+  #	the window is NOT maximised - it spans roughly x 602..1320, y 205..820
+  #	the sidebar holds   Sharing  /  Remote login (Remote login is SELECTED, blue)
+  #	the detail pane's breadcrumb says "Sharing", and its list is
+  #	    Content & Media      File Sharing, Media Sharing, Screen Sharing, Content Caching
+  #	    Accessories & Internet   Bluetooth, Printer, Internet Sharing
+  #	    Advanced             Remote Management
+  #	and the pane has ITS OWN SCROLLBAR at x ~1311, its thumb ending around y 648
+  #
+  # REMOTE LOGIN IS BELOW THAT FOLD. `pgdn` was sent twice and the page did not move: the keys go to
+  # whichever view has focus, and after a click in the sidebar that is the SIDEBAR - which has three
+  # rows and nothing to scroll. A CLICK ON THE SCROLLBAR TRACK IS NOT AMBIGUOUS: it belongs to the
+  # pane, and on macOS a click below the thumb moves exactly one page.
+  step "page the sharing list down by its own scrollbar"
+    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1320, 800], rect_at: [1920, 1080], scale: 1, words: [[ssh, and, sftp]]}, do: [{click: [1311, 720], settle: 3}], max: 8, see: {name: screen}, until: {fact: pane}}
   # TURNING REMOTE LOGIN ON RAISES AN AUTHORISATION DIALOG, AND THE OLD STEPS WALKED PAST IT.
   #
   # MEASURED on run 44679850735's recording, whose last fifty minutes are this one screen:
