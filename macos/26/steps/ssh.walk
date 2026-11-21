@@ -49,12 +49,32 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   step "close the keyboard assistant, if it is still up"
     loop == {check: {from: screen, mode: text, name: up, rect: [560, 200, 1400, 300], rect_at: [1920, 1080], scale: 1, words: [[keyboard, setup]]}, do: [{click: [666, 259], settle: 3}], max: 3, see: {name: screen}, until: {fact: up}}
     optional == true
-  step "focus the settings search field"
+  # THE SEARCH FIELD IS CLICKED FIRST AND `Cmd+F` IS ONLY THE FALLBACK, BECAUSE `Cmd+F` ALONE HAS
+  # BEEN MEASURED NOT TO WORK ON THIS IMAGE.
+  #
+  # MEASURED on run 44895802436: `Cmd+F` then `type remote login`, and the pane came out as
+  #
+  #	see: 40 word(s): < > | General Manage your overall setup and preferences for Mac, ...
+  #
+  # - General, with the sidebar's full list and an EMPTY search field. The keystrokes went nowhere.
+  # macOS 15's stage reaches this field with a CLICK at (715, 267) and a `meta_l` modifier, and that
+  # image's search does work; this one opens its window at a slightly different height, so the click
+  # is made at the field's own centre and `Cmd+F` is pressed afterwards - one of the two focuses it,
+  # and the check below proves which.
+  step "click the settings search field"
     clear == true
+    click == [715, 323]
+    settle == 3
+  step "and ask the keyboard to focus it too, if the click missed"
     key == meta_l+f
-    settle == 6
+    settle == 4
   step "search for remote login"
     type == remote login
+  # THE SEARCH IS PROVEN BY ITS RESULT, NOT ASSUMED. A field that never took the text leaves the
+  # sidebar showing General/Displays/Wallpaper, and the pane step then fails several steps later with
+  # a message about a pane - which is five measurements away from "the typing went nowhere".
+  step "the search found something"
+    loop == {check: {from: screen, mode: text, name: found, rect: [610, 250, 830, 420], rect_at: [1920, 1080], scale: 2, words: [[sharing]]}, do: [{click: [715, 323], settle: 2}, {type: remote login, settle: 3}], max: 4, see: {name: screen}, until: {fact: found}}
   # THE SEARCH NEEDS A RETURN, AND THE RESULT LIST IS EMPTY WITHOUT ONE.
   #
   # MEASURED on run 44830318447, whose recording ends on System Settings with `remote login` typed in
