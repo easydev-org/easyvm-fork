@@ -98,28 +98,42 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # `max: 4` because a list that ignores four clicks is not going to answer a fifth; each attempt
   # clicks the row and waits for the pane to draw.
-  step "open the remote login pane"
-    # THE WORDS ARE WHAT THE READER ACTUALLY RETURNS. tesseract on the pane's rectangle from run
-    # 44854479046's frame gives
-    #
-    #	Login: Off C J
-    #	_ogin lets users of other computers access this
-    #	r using SSH and SFTP.
-    #	access for remote users CY
-    #
-    # - "allow full disk" came back as "access for remote users", and a check that demands the exact
-    # phrase fails on a correct pane. `access for remote users` is a row of THIS pane and appears
-    # nowhere else, which is all the check needs.
-    # THE ROW'S OWN Y, MEASURED BY SCANNING FOR ITS TEXT. tesseract on strips of the sidebar from
-    # run 44872072172's frame:
-    #
-    #	y 305   "| Sharing"        the group heading
-    #	y 335   "Remote login"     THE ROW
-    #	y 392   (nothing)          where the previous four runs were clicking
-    #
-    # (703, 392) IS FIFTY PIXELS BELOW THE ROW - inside the empty list below it - which is why some
-    # runs highlighted the row (the pointer passed over it on the way) and this one did not.
-    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 380, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[access, for, remote, users]]}, do: [{click: [703, 340], settle: 5}, {click: [703, 340], settle: 6}], max: 4, see: {name: screen}, until: {fact: pane}}
+  # SELECTING "REMOTE LOGIN" OPENS THE SHARING OVERVIEW, NOT A REMOTE-LOGIN PANE.
+  #
+  # MEASURED on run 44877397659's recording, whose last ten minutes are this:
+  #
+  #	[ remote login ]        <- the sidebar row, HIGHLIGHTED blue
+  #	                        Sharing
+  #	                        Content & Media
+  #	                          File Sharing          [ off ]
+  #	                          Media Sharing         [ off ]
+  #	                          Screen Sharing        [ off ]
+  #	                          Content Caching       [ off ]
+  #	                        Accessories & Internet
+  #	                          Bluetooth / Printer / Internet Sharing
+  #	                        Advanced
+  #	                          Remote Management     [ off ]
+  #
+  # - the row IS selected and the pane IS "Sharing", but Remote Login is further down that list, out of
+  # view. The previous check demanded "access for remote users", which is a row of the REMOTE LOGIN
+  # section, so it read the overview as "the pane never opened" and clicked the sidebar four times.
+  #
+  # SO THE CHECK ASKS FOR THE OVERVIEW BY ITS OWN HEADING, and the list is then scrolled to the bottom
+  # where Remote Login lives. `content & media` appears on this page and nowhere else in Settings.
+  step "the sharing pane is up"
+    loop == {check: {from: screen, mode: text, name: shared, rect: [840, 250, 1400, 520], rect_at: [1920, 1080], scale: 1, words: [[content, media]]}, do: [{click: [703, 340], settle: 6}], max: 4, see: {name: screen}, until: {fact: shared}}
+  # THE LIST IS SCROLLED, NOT ASSUMED TO FIT. Remote Login sits below Remote Management at the bottom
+  # of this pane, and a window this size does not show it.
+  step "scroll to the bottom of the sharing pane"
+    click == [1145, 500]
+    settle == 1
+  press pgdn, waiting 1s, named "scroll 1"
+  press pgdn, waiting 1s, named "scroll 2"
+  press pgdn, waiting 2s, named "scroll 3"
+  step "the remote login section is in view"
+    # `access for remote users` IS THE ROW BESIDE THE SWITCH, and the sidebar's "Remote login" cannot
+    # satisfy it. Measured OCR of the scrolled pane: "...access for remote users CY".
+    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1400, 780], rect_at: [1920, 1080], scale: 1, words: [[access, for, remote, users]]}, do: [{key: pgdn, settle: 2}], max: 8, see: {name: screen}, until: {fact: pane}}
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
   #
   # MEASURED on run 44854479046's recording, whose last ten minutes are the pane with the switch
