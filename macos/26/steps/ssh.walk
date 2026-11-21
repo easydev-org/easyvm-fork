@@ -240,6 +240,19 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   step "quit the keyboard assistant, if it is up"
     loop == {check: {from: screen, mode: text, name: kbd, rect: [540, 400, 1360, 760], rect_at: [1920, 1080], scale: 1, words: [[keyboard, setup]]}, do: [{click: [1130, 818], settle: 4}], max: 3, see: {name: screen}, until: {fact: kbd}}
     optional == true
+  # THE TERMINAL IS CLICKED BEFORE ANYTHING IS TYPED INTO IT, BECAUSE A FRESH WINDOW DOES NOT
+  # NECESSARILY HAVE THE KEYBOARD.
+  #
+  # MEASURED on run 44935131156: the prompt WAS on screen -
+  #
+  #	ee ee oe ee vmuser@vmusers-iMac ~ % []
+  #
+  # - and `echo TERMINAL_READY` produced nothing. The window was drawn, the shell was running, and the
+  # keystrokes went to the Finder behind it. This is the same shape as the fedora stage's terminal: the
+  # window has to be given the keyboard before its prompt is evidence of anything.
+  step "click the terminal window"
+    click == [500, 300]
+    settle == 2
   step "the terminal answers"
     run == echo TERMINAL_READY
     type_gap == 0.12
