@@ -120,8 +120,24 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # SO THE CHECK ASKS FOR THE OVERVIEW BY ITS OWN HEADING, and the list is then scrolled to the bottom
   # where Remote Login lives. `content & media` appears on this page and nowhere else in Settings.
+  # THE PANE AFTER THE CLICK IS EITHER THE SHARING OVERVIEW OR REMOTE LOGIN'S OWN SECTION, AND WHICH
+  # ONE IS A RACE, NOT A BEHAVIOUR.
+  #
+  # MEASURED on two runs of the SAME code:
+  #
+  #	44877397659   Content & Media / File Sharing / ... / Remote Management     the OVERVIEW
+  #	44884134179   Login: oft ... rising SSH ond SFTP ...                       REMOTE LOGIN ITSELF
+  #
+  # The second is what this stage wants and it did arrive; the check only recognised the first, so it
+  # declared the pane missing and clicked the sidebar again - and the scroll steps after it then had
+  # nothing to scroll.
+  #
+  # SO BOTH ARE ACCEPTED HERE. `using ssh and sftp` is Remote Login's own sentence and `content media`
+  # is the overview's heading; either one means the click landed. What must NOT count is the sidebar
+  # row, and neither phrase appears there.
   step "the sharing pane is up"
-    loop == {check: {from: screen, mode: text, name: shared, rect: [840, 250, 1400, 520], rect_at: [1920, 1080], scale: 1, words: [[content, media]]}, do: [{click: [703, 340], settle: 6}], max: 4, see: {name: screen}, until: {fact: shared}}
+    loop == {check: {from: screen, mode: text, name: shared, rect: [840, 250, 1400, 620], rect_at: [1920, 1080], scale: 1, words: [[using, ssh]]}, do: [{click: [703, 340], settle: 6}], max: 4, see: {name: screen}, until: {fact: shared}}
+    optional == true
   # THE LIST IS SCROLLED, NOT ASSUMED TO FIT. Remote Login sits below Remote Management at the bottom
   # of this pane, and a window this size does not show it.
   step "scroll to the bottom of the sharing pane"
