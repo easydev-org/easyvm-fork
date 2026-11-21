@@ -86,26 +86,31 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # The click at (703, 336) was above the heading, on the empty strip between the search field and the
   # list, so the window stayed on General - and the next check, which looks for the pane's own
   # "Allow full disk access" row, spent its whole budget describing General.
-  # ONE CLICK SELECTS THE ROW; THE PANE OPENS ON THE SECOND.
+  # THE PANE IS OPENED IN A LOOP, BECAUSE ONE CLICK SELECTS AND ONLY THE PANE'S CONTENTS PROVE IT.
   #
-  # MEASURED on run 44860489305's recording, whose last minutes are this:
+  # MEASURED on run 44860489305: one click leaves the row HIGHLIGHTED and the right-hand side still
+  # saying General. MEASURED on run 44865551562: a DOUBLE click leaves the same thing. Both were
+  # single gestures with a fixed wait, and both were wrong about how this list opens.
   #
-  #	[ remote login ]
-  #	⚙ Sharing
-  #	  Remote login        <- HIGHLIGHTED, selected, and the right-hand side still says General
+  # SO THE GESTURE IS REPEATED UNTIL THE PANE'S OWN WORDS ARE ON SCREEN, and the loop's condition is
+  # the CONTENT rather than the highlight: "Allow full disk access" is a row inside the pane and
+  # appears nowhere else, so it cannot be satisfied by a selected list row.
   #
-  # So the first click lands - the row is blue - and the pane does not change. The old sequence was one
-  # click, then a second click ONLY IF the pane had not appeared (`when_not:`), which meant the second
-  # click never happened: the guard was evaluated against the pane's words and the click it guarded was
-  # the very thing that would have made them appear.
-  #
-  # A DOUBLE CLICK is the gesture that opens a selected row in this list, and it is one action rather
-  # than a click plus a guess about whether a second one is needed.
+  # `max: 4` because a list that ignores four clicks is not going to answer a fifth; each attempt
+  # clicks the row and waits for the pane to draw.
   step "open the remote login pane"
-    double == [703, 392]
-    settle == 10
-  step "the remote login pane is up"
-    loop == {check: {from: screen, mode: text, name: done, rect: [726, 300, 1200, 715], rect_at: [1920, 1080], scale: 2, words: [[allow, full, disk, access]]}, do: [{settle: 3}], max: 30, see: {name: screen}, until: {fact: done}}
+    # THE WORDS ARE WHAT THE READER ACTUALLY RETURNS. tesseract on the pane's rectangle from run
+    # 44854479046's frame gives
+    #
+    #	Login: Off C J
+    #	_ogin lets users of other computers access this
+    #	r using SSH and SFTP.
+    #	access for remote users CY
+    #
+    # - "allow full disk" came back as "access for remote users", and a check that demands the exact
+    # phrase fails on a correct pane. `access for remote users` is a row of THIS pane and appears
+    # nowhere else, which is all the check needs.
+    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 380, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[access, for, remote, users]]}, do: [{click: [703, 392], settle: 5}, {click: [703, 392], settle: 6}], max: 4, see: {name: screen}, until: {fact: pane}}
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
   #
   # MEASURED on run 44854479046's recording, whose last ten minutes are the pane with the switch
