@@ -74,7 +74,18 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # sidebar showing General/Displays/Wallpaper, and the pane step then fails several steps later with
   # a message about a pane - which is five measurements away from "the typing went nowhere".
   step "the search found something"
-    loop == {check: {from: screen, mode: text, name: found, rect: [610, 250, 830, 420], rect_at: [1920, 1080], scale: 2, words: [[sharing]]}, do: [{click: [715, 323], settle: 2}, {type: remote login, settle: 3}], max: 4, see: {name: screen}, until: {fact: found}}
+    # THE WORDS ARE WHAT THE READER RETURNS. MEASURED on run 44899803256, where the search DID work:
+    #
+    #	the search found something [check]: found = false (none of "sharing" in "O Remo Remot comp!")
+    #
+    # `O Remo Remot comp!` is the sidebar with both results in it - `Sharing` and `Remote login`, each
+    # clipped by the 2x upscale. The search was fine; the check demanded a word the reader had already
+    # lost the middle of.
+    #
+    # `remote` IS in that string and is the word that matters: this stage is looking for the Remote
+    # login result, and a sidebar showing it cannot show it without that substring. The scale is 1 so
+    # the reader gets whole lines rather than a magnified fragment.
+    loop == {check: {from: screen, mode: text, name: found, rect: [610, 250, 830, 420], rect_at: [1920, 1080], scale: 1, words: [[remote]]}, do: [{click: [715, 323], settle: 2}, {type: remote login, settle: 3}], max: 4, see: {name: screen}, until: {fact: found}}
   # THE SEARCH NEEDS A RETURN, AND THE RESULT LIST IS EMPTY WITHOUT ONE.
   #
   # MEASURED on run 44830318447, whose recording ends on System Settings with `remote login` typed in
