@@ -188,13 +188,45 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # focus back to the overview - and clicking it again, as a retry loop does, is exactly that second
   # click.
   #
-  # A KEYBOARD IS NOT AMBIGUOUS ABOUT THIS. The row is focused by clicking once, and Return opens it -
-  # one action, and it does not depend on whether the row was selected a moment ago.
-  step "select the remote login row"
-    click == [703, 340]
-    settle == 3
-  step "the remote login page is up"
-    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[ssh, and, sftp]]}, do: [{key: ret, settle: 6}], max: 4, see: {name: screen}, until: {fact: pane}}
+  # TEN RUNS AT THE PANE, AND THE EVIDENCE CANNOT BE RECONCILED BY ANOTHER COORDINATE:
+  #
+  #	44884134179  click (703,340)  -> Remote Login's own page   "Login: oft ... rising SSH ond SFTP"
+  #	44889704697  click (703,340)  -> the Sharing OVERVIEW       row already selected
+  #	44910865639  click (703,340)  -> the Sharing OVERVIEW       row already selected
+  #	44917390363  click + Return   -> the Sharing OVERVIEW       Return did not open it either
+  #
+  # The same gesture produces both outcomes, and every failed variant costs fifty minutes of wizard to
+  # re-test. A GUI is a VIEW of a setting; driving the view has been the least reliable part of this
+  # stage, and what the stage exists to establish is that SSH ANSWERS - which `wait for sshd` measures
+  # directly and which no settings window can fake.
+  #
+  # SO THE SETTING IS MADE FROM A TERMINAL, WITH THE COMMAND APPLE DOCUMENTS:
+  #
+  #	sudo systemsetup -setremotelogin on
+  step "open a terminal on the desktop"
+    key == meta_l+spc
+    settle == 4
+  step "type the terminal's name"
+    type == terminal
+    settle == 4
+  press Return, waiting 14s, named "open Terminal"
+  step "the terminal answers"
+    run == echo TERMINAL_READY
+    type_gap == 0.12
+    settle == 4
+  step "it is a shell"
+    loop == {check: {from: shell, mode: text, name: ready, rect: [595, 325, 1330, 480], rect_at: [1920, 1080], scale: 1, words: [[terminalready]]}, do: [{settle: 3}], max: 8, see: {name: shell}, until: {fact: ready}}
+  # THE SETTING IS TURNED ON AND THEN READ BACK, and the reading is what a reader gets to see -
+  # `systemsetup` needs Full Disk Access to WRITE on a fresh install and may refuse, while the port
+  # check after it is the only claim this stage makes that cannot be faked.
+  step "turn remote login on from the command line"
+    run == printf '%s\n' '{{ password }}' | sudo -S systemsetup -setremotelogin on 2>&1 | tail -3
+    type_gap == 0.12
+    settle == 8
+  step "ask what the setting now says"
+    run == systemsetup -getremotelogin 2>&1 | tail -2
+    type_gap == 0.12
+    settle == 5
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
   #
   # MEASURED on run 44854479046's recording, whose last ten minutes are the pane with the switch
