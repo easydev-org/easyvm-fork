@@ -120,36 +120,27 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # SO THE CHECK ASKS FOR THE OVERVIEW BY ITS OWN HEADING, and the list is then scrolled to the bottom
   # where Remote Login lives. `content & media` appears on this page and nowhere else in Settings.
-  # THE PANE AFTER THE CLICK IS EITHER THE SHARING OVERVIEW OR REMOTE LOGIN'S OWN SECTION, AND WHICH
-  # ONE IS A RACE, NOT A BEHAVIOUR.
+  # REMOTE LOGIN IS ITS OWN PAGE IN THIS LIST, AND THE SHARING OVERVIEW DOES NOT CONTAIN IT.
   #
-  # MEASURED on two runs of the SAME code:
+  # MEASURED on run 44889704697's recording, which ends on the Sharing OVERVIEW while the sidebar
+  # shows `Remote login` HIGHLIGHTED:
   #
-  #	44877397659   Content & Media / File Sharing / ... / Remote Management     the OVERVIEW
-  #	44884134179   Login: oft ... rising SSH ond SFTP ...                       REMOTE LOGIN ITSELF
+  #	Content & Media      File / Media / Screen Sharing, Content Caching
+  #	Accessories & Internet   Bluetooth / Printer / Internet Sharing
+  #	Advanced             Remote Management
   #
-  # The second is what this stage wants and it did arrive; the check only recognised the first, so it
-  # declared the pane missing and clicked the sidebar again - and the scroll steps after it then had
-  # nothing to scroll.
+  # THERE IS NO REMOTE LOGIN SWITCH ANYWHERE ON THAT PAGE - it is not a row of the overview, it is a
+  # SIBLING page the sidebar opens. So scrolling the overview, as the previous version did, could
+  # never reach it, and the switch that `wait for sshd` needed was never thrown.
   #
-  # SO BOTH ARE ACCEPTED HERE. `using ssh and sftp` is Remote Login's own sentence and `content media`
-  # is the overview's heading; either one means the click landed. What must NOT count is the sidebar
-  # row, and neither phrase appears there.
-  step "the sharing pane is up"
-    loop == {check: {from: screen, mode: text, name: shared, rect: [840, 250, 1400, 620], rect_at: [1920, 1080], scale: 1, words: [[using, ssh]]}, do: [{click: [703, 340], settle: 6}], max: 4, see: {name: screen}, until: {fact: shared}}
-    optional == true
-  # THE LIST IS SCROLLED, NOT ASSUMED TO FIT. Remote Login sits below Remote Management at the bottom
-  # of this pane, and a window this size does not show it.
-  step "scroll to the bottom of the sharing pane"
-    click == [1145, 500]
-    settle == 1
-  press pgdn, waiting 1s, named "scroll 1"
-  press pgdn, waiting 1s, named "scroll 2"
-  press pgdn, waiting 2s, named "scroll 3"
-  step "the remote login section is in view"
-    # `access for remote users` IS THE ROW BESIDE THE SWITCH, and the sidebar's "Remote login" cannot
-    # satisfy it. Measured OCR of the scrolled pane: "...access for remote users CY".
-    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1400, 780], rect_at: [1920, 1080], scale: 1, words: [[access, for, remote, users]]}, do: [{key: pgdn, settle: 2}], max: 8, see: {name: screen}, until: {fact: pane}}
+  # AND THE PAGE THAT DID OPEN ONCE (run 44884134179, `Login: oft ... rising SSH ond SFTP`) proves the
+  # click works - it is the OVERVIEW that sometimes wins, because the sidebar and the detail pane are
+  # drawn independently and a click can land between them.
+  #
+  # SO THE CLICK IS REPEATED UNTIL THE DETAIL PAGE'S OWN SENTENCE IS ON SCREEN. `using ssh and sftp`
+  # is in Remote Login's description and nowhere else; the overview does not contain it.
+  step "the remote login page is up"
+    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[ssh, and, sftp]]}, do: [{click: [703, 340], settle: 6}], max: 5, see: {name: screen}, until: {fact: pane}}
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
   #
   # MEASURED on run 44854479046's recording, whose last ten minutes are the pane with the switch
