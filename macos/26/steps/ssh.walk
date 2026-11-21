@@ -110,7 +110,16 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
     # - "allow full disk" came back as "access for remote users", and a check that demands the exact
     # phrase fails on a correct pane. `access for remote users` is a row of THIS pane and appears
     # nowhere else, which is all the check needs.
-    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 380, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[access, for, remote, users]]}, do: [{click: [703, 392], settle: 5}, {click: [703, 392], settle: 6}], max: 4, see: {name: screen}, until: {fact: pane}}
+    # THE ROW'S OWN Y, MEASURED BY SCANNING FOR ITS TEXT. tesseract on strips of the sidebar from
+    # run 44872072172's frame:
+    #
+    #	y 305   "| Sharing"        the group heading
+    #	y 335   "Remote login"     THE ROW
+    #	y 392   (nothing)          where the previous four runs were clicking
+    #
+    # (703, 392) IS FIFTY PIXELS BELOW THE ROW - inside the empty list below it - which is why some
+    # runs highlighted the row (the pointer passed over it on the way) and this one did not.
+    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 380, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[access, for, remote, users]]}, do: [{click: [703, 340], settle: 5}, {click: [703, 340], settle: 6}], max: 4, see: {name: screen}, until: {fact: pane}}
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
   #
   # MEASURED on run 44854479046's recording, whose last ten minutes are the pane with the switch
