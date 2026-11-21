@@ -179,8 +179,22 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # SO THE CLICK IS REPEATED UNTIL THE DETAIL PAGE'S OWN SENTENCE IS ON SCREEN. `using ssh and sftp`
   # is in Remote Login's description and nowhere else; the overview does not contain it.
+  # THE ROW IS OPENED BY KEYBOARD, BECAUSE CLICKING IT TOGGLES BETWEEN TWO PANES.
+  #
+  # MEASURED ACROSS RUNS: a click at (703, 340) sometimes opens Remote Login's own page
+  # (44884134179 read "Login: oft ... rising SSH ond SFTP") and sometimes leaves the Sharing OVERVIEW
+  # on screen with the row already selected (44889704697, 44910865639). The row is a SELECTION in a
+  # list whose detail pane is drawn separately, so a second click on an already-selected row moves the
+  # focus back to the overview - and clicking it again, as a retry loop does, is exactly that second
+  # click.
+  #
+  # A KEYBOARD IS NOT AMBIGUOUS ABOUT THIS. The row is focused by clicking once, and Return opens it -
+  # one action, and it does not depend on whether the row was selected a moment ago.
+  step "select the remote login row"
+    click == [703, 340]
+    settle == 3
   step "the remote login page is up"
-    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[ssh, and, sftp]]}, do: [{click: [703, 340], settle: 6}], max: 5, see: {name: screen}, until: {fact: pane}}
+    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[ssh, and, sftp]]}, do: [{key: ret, settle: 6}], max: 4, see: {name: screen}, until: {fact: pane}}
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END - NOT THE ROW'S TEXT.
   #
   # MEASURED on run 44854479046's recording, whose last ten minutes are the pane with the switch
