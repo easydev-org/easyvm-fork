@@ -276,9 +276,28 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # THE LOOP REMAINS because a maximised window occasionally needs the result to be focused first, and
   # `down` moves the selection without committing to a row number.
-  step "focus the search result"
-    key == down
-    settle == 1
+  # THE FOCUS IS PUT IN THE RESULT LIST BY CLICKING ITS SELECTED ROW, WHICH IS FOUND BY COLOUR.
+  #
+  # MEASURED on run 44993137543, whose `Down` did nothing: the focus was still in the SEARCH FIELD, so
+  # `Down` moved a text cursor and `Return` re-ran the search. The final frame shows the sidebar with
+  # `Sharing` selected blue and `Remote login` grey beneath it - the list was never focused, and
+  # nothing ever opened.
+  #
+  # The selected row is drawn in the system accent blue. MEASURED on that frame:
+  #
+  #	rgb(0,98,224) over x 616..811, y 128..159, centre (713,143)
+  #
+  # CLICKING IT PUTS THE FOCUS IN THE LIST WITHOUT DEPENDING ON WHERE THE ROW IS - the same property
+  # `at_color` gave the green button. `Down` then moves the selection one row, from `Sharing` to the
+  # `Remote login` beneath it, and `Return` opens it.
+  #
+  # THE BAND IS THE SIDEBAR'S OWN COLUMN [600, 100, 830, 300], which contains the selected row at any
+  # of the window positions seen so far. `tolerance 40` because the row is antialiased at its edges.
+  step "focus the search result list"
+    at_color == [0, 98, 224]
+    color_tolerance == 40
+    color_region == [600, 100, 830, 300]
+    settle == 2
   # THE GATE CANNOT BE "remote login", AND THAT MISTAKE COST A RUN.
   #
   # MEASURED on run 44988267533, which reached `wait for sshd` and timed out there: the SIDEBAR
