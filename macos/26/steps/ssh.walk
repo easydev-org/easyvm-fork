@@ -279,8 +279,25 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   step "focus the search result"
     key == down
     settle == 1
+  # THE GATE CANNOT BE "remote login", AND THAT MISTAKE COST A RUN.
+  #
+  # MEASURED on run 44988267533, which reached `wait for sshd` and timed out there: the SIDEBAR
+  # contains the words `Remote login` as the search RESULT, so a check for [[remote, login]] passed
+  # while the sheet was not open at all - and the step after it then clicked (1138, 348), which on
+  # that screen was empty space in the Sharing list. Its final frame shows `Sharing` selected, the
+  # whole sharing page, and BOTH switches off:
+  #
+  #	[ remote login      ]
+  #	  Sharing            <- selected, blue
+  #	  Remote login       <- grey, NOT opened
+  #	Advanced
+  #	  Remote Management        [ off ]
+  #	  Remote Login             [ off ]     <- still off, because nothing ever clicked it
+  #
+  # THE SHEET'S OWN SENTENCE IS THE GATE. `lets users of other computers` appears in the sheet's
+  # description and nowhere in the sidebar or the page.
   step "open the remote login detail sheet"
-    loop == {check: {from: screen, mode: text, name: sheet, rect: [600, 200, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[remote, login]]}, do: [{key: ret, settle: 5}], max: 4, see: {name: screen}, until: {fact: sheet}}
+    loop == {check: {from: screen, mode: text, name: sheet, rect: [600, 200, 1500, 800], rect_at: [1920, 1080], scale: 1, words: [[lets, users, of, other, computers]]}, do: [{key: ret, settle: 5}], max: 4, see: {name: screen}, until: {fact: sheet}}
   # ITS SWITCH, MEASURED FROM THE TRACK ITSELF: a white knob (255,255,255) at x 1124..1146 and the
   # grey track (216..221) at x 1148..1158, inside y 340..356 - centre (1138, 348), knob on the LEFT,
   # which is OFF.
