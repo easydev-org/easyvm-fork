@@ -211,7 +211,15 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # THE ROW IS CLICKED BY ITS LABEL FIRST, so a mis-measured switch cannot silently click the
   # neighbouring `Remote Management` row: the check below proves the LABEL is where the click will go.
   step "the remote login row is in view"
-    loop == {check: {from: screen, mode: text, name: row, rect: [900, 545, 1200, 620], rect_at: [1920, 1080], scale: 1, words: [[remote, login]]}, do: [{settle: 2}], max: 3, see: {name: screen}, until: {fact: row}}
+    # THE BAND IS MEASURED BY STRIPPING THE FRAME FOR THE LABEL'S OWN TEXT, one 22px row at a time:
+    #
+    #	y 565..587   "Remote Login"      <- and y 585 returns "Merwe Lyi", which is the SWITCH beside
+    #	y 550        (nothing)              the label, not part of it
+    #	y 590        (nothing)
+    #
+    # A box that starts at 545 and ends at 620 contains the label AND the switch AND the row above it,
+    # and the reader then returns a combination that matches nothing.
+    loop == {check: {from: screen, mode: text, name: row, rect: [880, 565, 1200, 585], rect_at: [1920, 1080], scale: 1, words: [[remote, login]]}, do: [{settle: 2}], max: 3, see: {name: screen}, until: {fact: row}}
   # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END.
   #
   # MEASURED from the same frame by scanning the track: the knob is white (255,255,255) at
