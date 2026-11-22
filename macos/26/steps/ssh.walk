@@ -189,38 +189,62 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # pass after the action it is checking. So the stage was scrolling past the row it needed while
   # waiting for proof that it had already been clicked.
   #
-  # THE SWITCH IS AT (1243, 585) ON THAT FRAME, found by scanning its own track: a white knob
-  # (255,255,255) at x 1228..1246 and a grey track (216..222) at x 1248..1260, i.e. OFF. Its row's
-  # label reads "Remote Login" in OCR.
+  # THE ROW'S (i) BUTTON IS PRESSED, BECAUSE THE SHEET IT OPENS IS THE BIGGEST TARGET ON THIS PAGE.
+  #
+  # MEASURED on run 44971255622's final frame - the first run whose SEARCH worked and whose page
+  # reached this row. The (i) had been pressed (it was the next thing the click aimed at) and the
+  # sheet that appeared reads, at a size a reader cannot miss:
+  #
+  #	[icon] Remote Login: Off
+  #	       Remote Login lets users of other computers access this
+  #	       computer using SSH and SFTP.
+  #	Allow full disk access for remote users            [ off ]
+  #	Allow access for            Only these users
+  #	  Administrators
+  #	                                            [ Done ]
+  #
+  # THREE REASONS THIS IS BETTER THAN THE ROW'S OWN SWITCH:
+  #
+  #   1. `Remote Login: Off` IS A SENTENCE, so the state can be READ before and after the click.
+  #      The row's switch is 20 pixels of grey with no text of its own, and telling "off" from "on"
+  #      there means measuring a knob's position.
+  #   2. IT IS IN THE MIDDLE OF THE SCREEN, so it does not depend on where this window (which is NOT
+  #      maximised) happens to sit - the two measurement failures in this stage's history were both
+  #      "the window was 60 pixels lower in that run".
+  #   3. THE SHEET'S OWN SWITCH IS AT A KNOWN PLACE INSIDE A KNOWN BOX: scanning this frame gives a
+  #      white knob (255,255,255) at x 1124..1146 and the track (216..221) at x 1148..1158, inside
+  #      y 340..356 - so its centre is (1138, 348).
   step "select the remote login row"
     click == [703, 340]
     settle == 4
-  # THE BOTTOM OF THE PAGE IS THE PLACE TO AIM FOR, AND `Advanced` + `Local hostname` ARE ITS OWN
-  # WORDS - both appear only at the very bottom, and neither is a sentence that depends on the switch.
-  step "page the sharing list to its bottom"
-    loop == {check: {from: screen, mode: text, name: bottom, rect: [840, 250, 1300, 800], rect_at: [1920, 1080], scale: 1, words: [[advanced], [local, hostname]]}, do: [{click: [1311, 720], settle: 3}], max: 10, see: {name: screen}, until: {fact: bottom}}
-  # THE ROW IS CLICKED BY ITS LABEL FIRST, so a mis-measured switch cannot silently click the
-  # neighbouring `Remote Management` row: the check below proves the LABEL is where the click will go.
+  # `advanced` IS THE HEADING DIRECTLY ABOVE THIS ROW and `local hostname` is below it; the check takes
+  # either, because the page's scroll position varies by a few hundred pixels between runs.
+  step "page the sharing list to the advanced section"
+    loop == {check: {from: screen, mode: text, name: bottom, rect: [840, 250, 1300, 800], rect_at: [1920, 1080], scale: 1, words: [[advanced]]}, do: [{click: [1311, 720], settle: 3}], max: 10, see: {name: screen}, until: {fact: bottom}}
   step "the remote login row is in view"
-    # THE BAND IS MEASURED BY STRIPPING THE FRAME FOR THE LABEL'S OWN TEXT, one 22px row at a time:
-    #
-    #	y 565..587   "Remote Login"      <- and y 585 returns "Merwe Lyi", which is the SWITCH beside
-    #	y 550        (nothing)              the label, not part of it
-    #	y 590        (nothing)
-    #
-    # A box that starts at 545 and ends at 620 contains the label AND the switch AND the row above it,
-    # and the reader then returns a combination that matches nothing.
-    loop == {check: {from: screen, mode: text, name: row, rect: [880, 565, 1200, 585], rect_at: [1920, 1080], scale: 1, words: [[remote, login]]}, do: [{settle: 2}], max: 3, see: {name: screen}, until: {fact: row}}
-  # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END.
+    loop == {check: {from: screen, mode: text, name: row, rect: [880, 540, 1200, 620], rect_at: [1920, 1080], scale: 1, words: [[remote, login]]}, do: [{settle: 2}], max: 3, see: {name: screen}, until: {fact: row}}
+  # THE (i) IS AT THE ROW'S FAR RIGHT, 12 PIXELS PAST THE SWITCH - measured from the same frame as
+  # the switch itself: the switch's track ends at x 1260 and the info button's ring sits at 1272..1288.
+  step "open the remote login detail sheet"
+    click == [1280, 585]
+    settle == 6
+  # THE SHEET SAYS ITS OWN STATE IN WORDS, AND THAT IS WHAT GETS READ.
+  # THE TITLE LINE IS READ AT 2x AND IT READS CLEANLY THERE. MEASURED, same frame:
   #
-  # MEASURED from the same frame by scanning the track: the knob is white (255,255,255) at
-  # x 1228..1246 and the track is grey (216..222) at x 1248..1260, all of it inside y 579..591. So the
-  # control's centre is (1243, 585) and its left-hand state means OFF.
+  #   scale 1 over [760, 300, 1200, 480]  ->  "access and computer computers disk for full lets llow
+  #                                            logi login low of off only other remote sftp ssh ..."
+  #   scale 2 over the same box           ->  "Remote Login: Off"
   #
-  # IT IS CLICKED ONCE. A retry loop here would toggle it back - the page redraws under the pointer and
-  # a second click lands on a switch that is now ON.
-  step "turn remote login on"
-    click == [1243, 585]
+  # The upscale is not decoration: this text is 13-point and the reader needs the extra pixels to
+  # keep the colon and the capital R. `remote` and `login` are the two words that matter and both
+  # survive either way, so the gate asks for those and not for the state - the state is checked by
+  # the step AFTER the click, where it is the thing that changed.
+  step "the detail sheet is up"
+    loop == {check: {from: screen, mode: text, name: sheet, rect: [760, 300, 1200, 480], rect_at: [1920, 1080], scale: 2, words: [[remote, login]]}, do: [{settle: 2}], max: 5, see: {name: screen}, until: {fact: sheet}}
+  # ITS SWITCH IS THEN CLICKED ONCE - not in a loop, because a second click on a switch that has
+  # already moved would put it back.
+  step "turn remote login on in the sheet"
+    click == [1138, 348]
     settle == 6
   # TURNING REMOTE LOGIN ON RAISES AN AUTHORISATION DIALOG, AND THE OLD STEPS WALKED PAST IT.
   #
