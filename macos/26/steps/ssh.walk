@@ -365,15 +365,28 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # Return. So the sheet is answered by typing the password and pressing Return - two actions that do
   # not depend on where the window is, which matters because this window is NOT maximised and its
   # origin shifts between runs.
-  step "type the password into the dialog"
-    when == [asked]
-    type == '{{ password }}'
-    type_gap == 0.10
-    settle == 2
-  step "accept the change"
-    when == [asked]
-    key == ret
-    settle == 8
+  # `when:` IS NOT A GATE ON A FACT - IT IS A GATE ON THE SCREEN'S WORDS.
+  #
+  # MEASURED on run 45003491388, which reached this dialog and stopped in front of it:
+  #
+  #	=== type the password into the dialog
+  #	  ... - when: 126 word(s): & systemSettings Edit View Window Help Q S SunNov 22 1:39AM ...
+  #	  skipped: the screen does not say "asked"
+  #
+  # `asked` WAS TRUE - the loop above had just logged `asked = true (read "trying to modify")` - and
+  # the step was skipped anyway, because `when: [asked]` means "the SCREEN says the word asked". The
+  # key's own summary says so: "a pane: the words on screen that mean this step applies".
+  #
+  # `if:` IS THE KEY THAT TESTS A FACT: "run `then:` when this named boolean is true". That is what
+  # this needs, and the `then:` list is the two actions the dialog wants.
+  #
+  # THE PASSWORD FIELD ARRIVES FOCUSED - its insertion point is drawn - and `Modify Settings` is the
+  # accent-blue default button, so typing the password and pressing Return answers the sheet. Measured
+  # from the frame of THIS run: the field's caret is at (855,584) and `Modify Settings` spans
+  # x 845..1074 at y 622..647.
+  step "answer the authorisation dialog"
+    if == asked
+    then == [{type: '{{ password }}', type_gap: 0.10, settle: 3}, {key: ret, settle: 10}]
   # NO STEP HERE CLAIMS "THE SWITCH IS ON", AND THAT IS DELIBERATE.
   #
   # The pane's title is "Remote Login" whether the switch is on or off, and the sentence that used to
