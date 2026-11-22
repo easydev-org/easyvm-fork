@@ -177,27 +177,52 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # SO THE SELECTION IS FOLLOWED BY A SCROLL. The focus is moved into the detail pane first - a key
   # sent while the sidebar has it scrolls the sidebar - and then Page Down walks the page until Remote
   # Login's own sentence is on screen.
+  # REMOTE LOGIN IS A ROW INSIDE THE SHARING PAGE, NOT A PAGE OF ITS OWN.
+  #
+  # MEASURED on run 44959875619's final frame - the first picture of the BOTTOM of this page, after
+  # clicking the scrollbar track finally moved it:
+  #
+  #	Accessories & Internet
+  #	    Bluetooth Sharing              [ off ] (i)
+  #	    Printer Sharing                [ off ] (i)
+  #	    Internet Sharing               [ off ] (i)
+  #	Advanced
+  #	    Remote Management              [ off ] (i)
+  #	    Remote Login                   [ off ] (i)      <- THE SWITCH THIS STAGE NEEDS
+  #	    Remote Application Scripting   [ off ] (i)
+  #	Local hostname   vmusers-iMac.local        [ Edit... ]
+  #	Computers on your local network can access your computer at this address.
+  #
+  # EVERY EARLIER VERSION LOOKED FOR "using SSH and SFTP" - the sentence that appears once the switch
+  # is ON, or in the (i) popover. That is the SAME MISTAKE AS THE PANE ITSELF: a check that can only
+  # pass after the action it is checking. So the stage was scrolling past the row it needed while
+  # waiting for proof that it had already been clicked.
+  #
+  # THE SWITCH IS AT (1243, 585) ON THAT FRAME, found by scanning its own track: a white knob
+  # (255,255,255) at x 1228..1246 and a grey track (216..222) at x 1248..1260, i.e. OFF. Its row's
+  # label reads "Remote Login" in OCR.
   step "select the remote login row"
     click == [703, 340]
     settle == 4
-  # THE PAGE IS SCROLLED BY CLICKING ITS SCROLLBAR, BECAUSE A KEY DOES NOT REACH IT.
+  # THE BOTTOM OF THE PAGE IS THE PLACE TO AIM FOR, AND `Advanced` + `Local hostname` ARE ITS OWN
+  # WORDS - both appear only at the very bottom, and neither is a sentence that depends on the switch.
+  step "page the sharing list to its bottom"
+    loop == {check: {from: screen, mode: text, name: bottom, rect: [840, 250, 1300, 800], rect_at: [1920, 1080], scale: 1, words: [[advanced], [local, hostname]]}, do: [{click: [1311, 720], settle: 3}], max: 10, see: {name: screen}, until: {fact: bottom}}
+  # THE ROW IS CLICKED BY ITS LABEL FIRST, so a mis-measured switch cannot silently click the
+  # neighbouring `Remote Management` row: the check below proves the LABEL is where the click will go.
+  step "the remote login row is in view"
+    loop == {check: {from: screen, mode: text, name: row, rect: [900, 545, 1200, 620], rect_at: [1920, 1080], scale: 1, words: [[remote, login]]}, do: [{settle: 2}], max: 3, see: {name: screen}, until: {fact: row}}
+  # THE SWITCH ITSELF, AT THE ROW'S RIGHT-HAND END.
   #
-  # MEASURED on run 44952965228's final frame, which is the clearest picture of this window so far:
+  # MEASURED from the same frame by scanning the track: the knob is white (255,255,255) at
+  # x 1228..1246 and the track is grey (216..222) at x 1248..1260, all of it inside y 579..591. So the
+  # control's centre is (1243, 585) and its left-hand state means OFF.
   #
-  #	the window is NOT maximised - it spans roughly x 602..1320, y 205..820
-  #	the sidebar holds   Sharing  /  Remote login (Remote login is SELECTED, blue)
-  #	the detail pane's breadcrumb says "Sharing", and its list is
-  #	    Content & Media      File Sharing, Media Sharing, Screen Sharing, Content Caching
-  #	    Accessories & Internet   Bluetooth, Printer, Internet Sharing
-  #	    Advanced             Remote Management
-  #	and the pane has ITS OWN SCROLLBAR at x ~1311, its thumb ending around y 648
-  #
-  # REMOTE LOGIN IS BELOW THAT FOLD. `pgdn` was sent twice and the page did not move: the keys go to
-  # whichever view has focus, and after a click in the sidebar that is the SIDEBAR - which has three
-  # rows and nothing to scroll. A CLICK ON THE SCROLLBAR TRACK IS NOT AMBIGUOUS: it belongs to the
-  # pane, and on macOS a click below the thumb moves exactly one page.
-  step "page the sharing list down by its own scrollbar"
-    loop == {check: {from: screen, mode: text, name: pane, rect: [840, 250, 1320, 800], rect_at: [1920, 1080], scale: 1, words: [[ssh, and, sftp]]}, do: [{click: [1311, 720], settle: 3}], max: 8, see: {name: screen}, until: {fact: pane}}
+  # IT IS CLICKED ONCE. A retry loop here would toggle it back - the page redraws under the pointer and
+  # a second click lands on a switch that is now ON.
+  step "turn remote login on"
+    click == [1243, 585]
+    settle == 6
   # TURNING REMOTE LOGIN ON RAISES AN AUTHORISATION DIALOG, AND THE OLD STEPS WALKED PAST IT.
   #
   # MEASURED on run 44679850735's recording, whose last fifty minutes are this one screen:
@@ -229,19 +254,29 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #	Password field    y 575..590    (the box above the buttons)
   #	accent blue       y 620..645    (0,122,255) - that is `Modify Settings`, the default button
   #	Cancel            y 650..660
-  step "answer it with the account's password"
-    when == [asked]
-    click == [958, 583]
-    settle == 1
+  # THE DIALOG'S PASSWORD FIELD ARRIVES FOCUSED, SO NOTHING IS CLICKED INTO IT.
+  #
+  # MEASURED on run 44679850735's frame: the sheet is
+  #
+  #	Remote Login is trying to modify system settings.
+  #	Enter your password to allow this.
+  #	[ vmuser                 ]
+  #	[ Password               ]   <- the insertion point is already here
+  #	[ Modify Settings ]  [ Cancel ]
+  #
+  # and `Modify Settings` is the ACCENT-BLUE default button (0,122,255). A default button answers
+  # Return. So the sheet is answered by typing the password and pressing Return - two actions that do
+  # not depend on where the window is, which matters because this window is NOT maximised and its
+  # origin shifts between runs.
   step "type the password into the dialog"
     when == [asked]
     type == '{{ password }}'
     type_gap == 0.10
-    settle == 1
+    settle == 2
   step "accept the change"
     when == [asked]
-    click == [958, 632]
-    settle == 6
+    key == ret
+    settle == 8
   # NO STEP HERE CLAIMS "THE SWITCH IS ON", AND THAT IS DELIBERATE.
   #
   # The pane's title is "Remote Login" whether the switch is on or off, and the sentence that used to
