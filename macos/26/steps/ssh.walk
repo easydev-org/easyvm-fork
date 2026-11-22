@@ -77,7 +77,15 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # Keyboard Setup Assistant was still on screen behind it, so the first thing typed could be eaten:
   # `type` is retried once the field is open and the assistant closed.
   step "close the keyboard assistant, if it is still up"
-    loop == {check: {from: screen, mode: text, name: up, rect: [560, 200, 1400, 300], rect_at: [1920, 1080], scale: 1, words: [[keyboard, setup]]}, do: [{click: [666, 259], settle: 3}], max: 3, see: {name: screen}, until: {fact: up}}
+    # THE BAND IS THE WHOLE SCREEN, BECAUSE THIS RUNS AFTER THE ZOOM AND THE DIALOG MOVED WITH IT.
+    #
+    # [560, 200, 1400, 300] framed the assistant's title bar on an un-zoomed window; a maximised
+    # desktop puts that dialog wherever the system centres it. `keyboard` + `setup` are two words that
+    # appear together in no other dialog here.
+    #
+    # THE QUIT BUTTON IS REACHED WITH `esc` RATHER THAN A CLICK: the assistant answers Escape, and the
+    # click at (666, 259) was measured against a dialog that is no longer at that position.
+    loop == {check: {from: screen, mode: text, name: up, rect: [0, 60, 1920, 1080], rect_at: [1920, 1080], scale: 1, words: [[keyboard, setup]]}, do: [{key: esc, settle: 3}], max: 3, see: {name: screen}, until: {fact: up}}
     optional == true
   # THE SEARCH FIELD IS CLICKED FIRST AND `Cmd+F` IS ONLY THE FALLBACK, BECAUSE `Cmd+F` ALONE HAS
   # BEEN MEASURED NOT TO WORK ON THIS IMAGE.
