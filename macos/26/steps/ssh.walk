@@ -31,6 +31,36 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   press Return, waiting 14s, named "open it"
   step "the settings window is up"
     loop == {check: {from: screen, mode: text, name: done, rect: [0, 0, 1920, 1080], rect_at: [1920, 1080], scale: 1, words: [[system, settings], [general], [wi-fi]]}, do: [{settle: 3}], max: 30, see: {name: screen}, until: {fact: done}}
+  # THE WINDOW IS ZOOMED BEFORE ANYTHING IS CLICKED INSIDE IT, AND THAT IS THE FIX FOR THIS STAGE'S
+  # WHOLE HISTORY OF COORDINATES THAT WORKED ONCE.
+  #
+  # EVERY MEASUREMENT FAILURE IN THIS FILE HAS THE SAME SHAPE: a coordinate that was right on the
+  # frame it was measured from and wrong on the next run, because System Settings opens at a position
+  # and size that vary. The search field was at y 267 in one run and y 323 in another; the results
+  # row moved by 50px; the sheet's switch was inside a window that had itself moved. A maximised
+  # window does not move.
+  #
+  # AND THE BUTTON IS FOUND BY COLOUR, NOT BY COORDINATE. macOS draws the three traffic lights in
+  # fixed colours - green is rgb(51,198,87) - so `at_color` inside the title bar's own band finds it
+  # wherever the window happens to be. MEASURED against a real frame of this screen, three different
+  # search bands all returned the same point:
+  #
+  #	region [600 200 700 245] -> (670,224) ok=true
+  #	region [560 180 760 260] -> (670,224) ok=true
+  #	region [620 205 700 240] -> (670,224) ok=true
+  #	region [600 200 660 245] -> not found        (the red/yellow half - so 40 is not too wide)
+  #
+  # THE SEARCH BAND IS [560, 170, 780, 280]: tall enough to contain a title bar at any of the heights
+  # this window has opened at, and narrow enough to exclude the menu bar's own coloured pixels. Green
+  # appears nowhere else in that band.
+  #
+  # `tolerance 40` because the drawn dot is antialiased; the flat middle is rgb(51,198,87) and the
+  # edge is a gradient towards the window's grey.
+  step "zoom the settings window by its green button"
+    at_color == [51, 198, 87]
+    color_tolerance == 40
+    color_region == [560, 170, 780, 280]
+    settle == 4
   # THE SEARCH FIELD IS REACHED WITH Cmd+F, NOT WITH A COORDINATE.
   #
   # MEASURED on run 44838865799, whose recording ends with the field EMPTY and the sidebar showing the
