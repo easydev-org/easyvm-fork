@@ -62,59 +62,50 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # is made at the field's own centre and `Cmd+F` is pressed afterwards - one of the two focuses it,
   # and the check below proves which.
   step "click the settings search field"
-    clear == true
-    click == [715, 323]
+    click == [715, 322]
     settle == 3
   step "and ask the keyboard to focus it too, if the click missed"
     key == meta_l+f
     settle == 4
+  # THE SEARCH IS RETRIED, AND EVERY RETRY CLEARS THE FIELD FIRST.
+  #
+  # MEASURED on run 44964926871's final frame - and this one is worth reading closely, because the
+  # stage had already succeeded at the hard part. The search field had FOCUS (its blue ring is drawn)
+  # and its contents were:
+  #
+  #	"emote loginrem ote lom* loginremote loginremate lomote loginn"
+  #
+  # THE RETRY LOOP WAS APPENDING, NOT REPLACING. Each attempt typed `remote login` again at the end of
+  # the last one, so after four attempts the field held the word eight times over, macOS reported
+  #
+  #	No Results for "remote loginremote login..."
+  #
+  # and the check - which was reading a fixed band meant to contain the field - read nothing at all in
+  # this run, because the window sits ~60px lower here than in the frame that band was measured from:
+  #
+  #	[615, 262, 800, 285]   the band that worked on run 44905549978
+  #	the field's real y here   ~322
+  #
+  # SO TWO THINGS ARE FIXED, AND THEY ARE THE SAME LESSON TWICE:
+  #
+  #   1. `Cmd+A` BEFORE EVERY ATTEMPT, so a retry REPLACES the text instead of appending to it.
+  #   2. THE CHECK IS THE RESULT, NOT THE FIELD. "Sharing appears in the sidebar" is the thing the
+  #      stage actually needs, it cannot be satisfied by a mis-typed field, and the sidebar's position
+  #      is stable in a way that a text field's is not.
+  # `clear:` ONLY DOES ANYTHING NEXT TO A `click:`, AND THAT IS AN ENGINE RULE WORTH KNOWING HERE.
+  #
+  # `doType` reads `clear:` inside `if s.Has("click")` - it is the "click the box, select all, type"
+  # sequence, which is what a search field needs. A step with `clear: true` and no `click:` compiles,
+  # passes `easyvm check`, and TYPES WITHOUT CLEARING.
   step "search for remote login"
+    click == [715, 322]
+    clear == true
+    modifier == meta_l
     type == remote login
-  # THE SEARCH IS PROVEN BY ITS RESULT, NOT ASSUMED. A field that never took the text leaves the
-  # sidebar showing General/Displays/Wallpaper, and the pane step then fails several steps later with
-  # a message about a pane - which is five measurements away from "the typing went nowhere".
-  step "the search found something"
-    # THE WORDS ARE WHAT THE READER RETURNS. MEASURED on run 44899803256, where the search DID work:
-    #
-    #	the search found something [check]: found = false (none of "sharing" in "O Remo Remot comp!")
-    #
-    # `O Remo Remot comp!` is the sidebar with both results in it - `Sharing` and `Remote login`, each
-    # clipped by the 2x upscale. The search was fine; the check demanded a word the reader had already
-    # lost the middle of.
-    #
-    # `remote` IS in that string and is the word that matters: this stage is looking for the Remote
-    # login result, and a sidebar showing it cannot show it without that substring. The scale is 1 so
-    # the reader gets whole lines rather than a magnified fragment.
-    # THE FIELD, NOT THE LIST, AND THE DIFFERENCE IS MEASURED. On run 44905549978's final frame the
-    # Remote Login panel is OPEN and the sidebar behind it is covered:
-    #
-    #	[615, 262, 800, 285]  ->  "Q. remote login"     THE FIELD, with the text in it
-    #	[610, 250, 830, 420]  ->  ""                    the list, covered by the panel
-    #
-    # So a check on the list fails exactly when the stage is doing well - and that is the wrong way
-    # round for a gate. What this step has to establish is "the text reached the field", and the field
-    # says so whether or not a panel is over the list.
-    loop == {check: {from: screen, mode: text, name: found, rect: [615, 262, 800, 285], rect_at: [1920, 1080], scale: 1, words: [[remote]]}, do: [{click: [715, 323], settle: 2}, {type: remote login, settle: 3}], max: 4, see: {name: screen}, until: {fact: found}}
-  # THE SEARCH NEEDS A RETURN, AND THE RESULT LIST IS EMPTY WITHOUT ONE.
-  #
-  # MEASURED on run 44830318447, whose recording ends on System Settings with `remote login` typed in
-  # the search field and NOTHING in the sidebar but a gear glyph - and whose log shows the check
-  # reading one character, `b`, twenty-one times in a row:
-  #
-  #	see: 1 word(s): b
-  #
-  # The words were in the field and the search had not run. A Return submits it; without one the
-  # sidebar stays empty for ever, and the check's rectangle - which frames the RESULT, not the field -
-  # reads whatever the wallpaper is showing through the empty list.
+    settle == 3
   press Return, waiting 4s, named "run the search"
   step "the remote login result is on screen"
-    # THE RECT IS THE SIDEBAR ROW, MEASURED FROM THE FRAME: the result that appears after a successful
-    # search sits at x 615..800, y 265..330. The old box, [480, 240, 760, 420], covers the sidebar's
-    # empty top half plus a strip of desktop on its left.
-    # THE WHOLE SIDEBAR, BECAUSE THE RESULT'S ROW MOVES WITH THE WINDOW'S SCROLL AND THE SEARCH
-    # FIELD'S HEIGHT. What has to be true is "a result named Sharing is in the list", and a rectangle
-    # that frames the list is the honest way to ask that.
-    loop == {check: {from: screen, mode: text, name: done, rect: [610, 250, 830, 780], rect_at: [1920, 1080], scale: 2, words: [[sharing]]}, do: [{settle: 3}], max: 20, see: {name: screen}, until: {fact: done}}
+    loop == {check: {from: screen, mode: text, name: found, rect: [610, 250, 830, 850], rect_at: [1920, 1080], scale: 1, words: [[sharing]]}, do: [{key: meta_l+a, settle: 1}, {type: remote login, settle: 3}, {key: ret, settle: 4}], max: 4, see: {name: screen}, until: {fact: found}}
   # THE RESULT IS TWO ROWS UNDER A HEADING, AND [703, 336] LANDED BETWEEN THEM.
   #
   # MEASURED on run 44846410525's recording, whose search DID work after `Cmd+F`:
