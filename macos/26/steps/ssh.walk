@@ -161,91 +161,53 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #	  Accessories & Internet Bluetooth / Printer / Internet Sharing
   #	  Advanced               Remote Management
   #
-  # and the page's SCROLLBAR still at the TOP. THAT IS WHY EVERY CLICK "DID NOTHING": the row was
-  # accepted, and the section it points at is BELOW THE FOLD of one long page. The one run that
-  # appeared to work (44884134179, "Login: oft ... rising SSH ond SFTP") had scrolled there.
+  # CLICKING THE SEARCH RESULT OPENS THE DETAIL SHEET ITSELF - NO SCROLLING, NO (i) BUTTON.
   #
-  # SO THE SELECTION IS FOLLOWED BY A SCROLL. The focus is moved into the detail pane first - a key
-  # sent while the sidebar has it scrolls the sidebar - and then Page Down walks the page until Remote
-  # Login's own sentence is on screen.
-  # REMOTE LOGIN IS A ROW INSIDE THE SHARING PAGE, NOT A PAGE OF ITS OWN.
+  # MEASURED ON TWO RUNS, and the second one settles it. Run 44977365817's final frame is this screen:
   #
-  # MEASURED on run 44959875619's final frame - the first picture of the BOTTOM of this page, after
-  # clicking the scrollbar track finally moved it:
+  #	[ remote login                     ]
+  #	  Sharing
+  #	  Remote login                     <- the search result, selected
+  #	
+  #	  [icon] Remote Login: Off                       [ off ]
+  #	         Remote Login lets users of other computers access this
+  #	         computer using SSH and SFTP.
+  #	  Allow full disk access for remote users         [ off ]
+  #	  Allow access for     Only these users
+  #	    Administrators
+  #	                                          [ Done ]
   #
-  #	Accessories & Internet
-  #	    Bluetooth Sharing              [ off ] (i)
-  #	    Printer Sharing                [ off ] (i)
-  #	    Internet Sharing               [ off ] (i)
-  #	Advanced
-  #	    Remote Management              [ off ] (i)
-  #	    Remote Login                   [ off ] (i)      <- THE SWITCH THIS STAGE NEEDS
-  #	    Remote Application Scripting   [ off ] (i)
-  #	Local hostname   vmusers-iMac.local        [ Edit... ]
-  #	Computers on your local network can access your computer at this address.
+  # THE STAGE NEVER PRESSED AN (i) TO GET THIS SHEET. The steps that ran were: click the sidebar row
+  # at (703, 340), then a scroll loop that clicked the scrollbar track ten times. The sheet was already
+  # up before the first of those scroll clicks, which is why its text is what the scroll check kept
+  # reading:
   #
-  # EVERY EARLIER VERSION LOOKED FOR "using SSH and SFTP" - the sentence that appears once the switch
-  # is ON, or in the (i) popover. That is the SAME MISTAKE AS THE PANE ITSELF: a check that can only
-  # pass after the action it is checking. So the stage was scrolling past the row it needed while
-  # waiting for proof that it had already been clicked.
+  #	page the sharing list to the advanced section [check]: bottom = false
+  #	    (none of "advanced" in "Login: oft oe Er IND RICHIESTE rising SSH ond SFTP ...")
   #
-  # THE ROW'S (i) BUTTON IS PRESSED, BECAUSE THE SHEET IT OPENS IS THE BIGGEST TARGET ON THIS PAGE.
+  # SO THE MISTAKE WAS TWO-FOLD AND BOTH HALVES WERE MINE:
   #
-  # MEASURED on run 44971255622's final frame - the first run whose SEARCH worked and whose page
-  # reached this row. The (i) had been pressed (it was the next thing the click aimed at) and the
-  # sheet that appeared reads, at a size a reader cannot miss:
+  #   - I read that text as EVIDENCE THAT THE PAGE HAD SCROLLED TO THE ROW. It was the sheet.
+  #   - I then decided the sheet needed to be opened deliberately, with the (i) at (1280, 585), when
+  #     clicking the result had already opened it.
   #
-  #	[icon] Remote Login: Off
-  #	       Remote Login lets users of other computers access this
-  #	       computer using SSH and SFTP.
-  #	Allow full disk access for remote users            [ off ]
-  #	Allow access for            Only these users
-  #	  Administrators
-  #	                                            [ Done ]
+  # IN macOS 26 A SEARCH RESULT THAT IS A SECTION OF A PANE OPENS THAT SECTION AS A SHEET over the
+  # pane. That is why every earlier attempt to reach the row by scrolling ended in front of a modal
+  # sheet, and why the "same click, both outcomes" puzzle was never about the click.
   #
-  # THREE REASONS THIS IS BETTER THAN THE ROW'S OWN SWITCH:
-  #
-  #   1. `Remote Login: Off` IS A SENTENCE, so the state can be READ before and after the click.
-  #      The row's switch is 20 pixels of grey with no text of its own, and telling "off" from "on"
-  #      there means measuring a knob's position.
-  #   2. IT IS IN THE MIDDLE OF THE SCREEN, so it does not depend on where this window (which is NOT
-  #      maximised) happens to sit - the two measurement failures in this stage's history were both
-  #      "the window was 60 pixels lower in that run".
-  #   3. THE SHEET'S OWN SWITCH IS AT A KNOWN PLACE INSIDE A KNOWN BOX: scanning this frame gives a
-  #      white knob (255,255,255) at x 1124..1146 and the track (216..221) at x 1148..1158, inside
-  #      y 340..356 - so its centre is (1138, 348).
-  step "select the remote login row"
-    click == [703, 340]
-    settle == 4
-  # `advanced` IS THE HEADING DIRECTLY ABOVE THIS ROW and `local hostname` is below it; the check takes
-  # either, because the page's scroll position varies by a few hundred pixels between runs.
-  step "page the sharing list to the advanced section"
-    loop == {check: {from: screen, mode: text, name: bottom, rect: [840, 250, 1300, 800], rect_at: [1920, 1080], scale: 1, words: [[advanced]]}, do: [{click: [1311, 720], settle: 3}], max: 10, see: {name: screen}, until: {fact: bottom}}
-  step "the remote login row is in view"
-    loop == {check: {from: screen, mode: text, name: row, rect: [880, 540, 1200, 620], rect_at: [1920, 1080], scale: 1, words: [[remote, login]]}, do: [{settle: 2}], max: 3, see: {name: screen}, until: {fact: row}}
-  # THE (i) IS AT THE ROW'S FAR RIGHT, 12 PIXELS PAST THE SWITCH - measured from the same frame as
-  # the switch itself: the switch's track ends at x 1260 and the info button's ring sits at 1272..1288.
+  # THE SHEET IS ALSO THE BEST TARGET ON THIS SCREEN: `Remote Login: Off` is a sentence, the switch is
+  # in the middle of the display, and the window's own position does not matter.
   step "open the remote login detail sheet"
-    click == [1280, 585]
-    settle == 6
-  # THE SHEET SAYS ITS OWN STATE IN WORDS, AND THAT IS WHAT GETS READ.
-  # THE TITLE LINE IS READ AT 2x AND IT READS CLEANLY THERE. MEASURED, same frame:
+    loop == {check: {from: screen, mode: text, name: sheet, rect: [760, 300, 1200, 480], rect_at: [1920, 1080], scale: 2, words: [[remote, login]]}, do: [{click: [703, 340], settle: 5}], max: 4, see: {name: screen}, until: {fact: sheet}}
+  # ITS SWITCH, MEASURED FROM THE TRACK ITSELF: a white knob (255,255,255) at x 1124..1146 and the
+  # grey track (216..221) at x 1148..1158, inside y 340..356 - centre (1138, 348), knob on the LEFT,
+  # which is OFF.
   #
-  #   scale 1 over [760, 300, 1200, 480]  ->  "access and computer computers disk for full lets llow
-  #                                            logi login low of off only other remote sftp ssh ..."
-  #   scale 2 over the same box           ->  "Remote Login: Off"
-  #
-  # The upscale is not decoration: this text is 13-point and the reader needs the extra pixels to
-  # keep the colon and the capital R. `remote` and `login` are the two words that matter and both
-  # survive either way, so the gate asks for those and not for the state - the state is checked by
-  # the step AFTER the click, where it is the thing that changed.
-  step "the detail sheet is up"
-    loop == {check: {from: screen, mode: text, name: sheet, rect: [760, 300, 1200, 480], rect_at: [1920, 1080], scale: 2, words: [[remote, login]]}, do: [{settle: 2}], max: 5, see: {name: screen}, until: {fact: sheet}}
-  # ITS SWITCH IS THEN CLICKED ONCE - not in a loop, because a second click on a switch that has
-  # already moved would put it back.
+  # IT IS CLICKED ONCE. A retry loop would put it back: the sheet redraws under the pointer and the
+  # second click lands on a switch that has already moved.
   step "turn remote login on in the sheet"
     click == [1138, 348]
-    settle == 6
+    settle == 7
   # TURNING REMOTE LOGIN ON RAISES AN AUTHORISATION DIALOG, AND THE OLD STEPS WALKED PAST IT.
   #
   # MEASURED on run 44679850735's recording, whose last fifty minutes are this one screen:
