@@ -276,47 +276,32 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # THE LOOP REMAINS because a maximised window occasionally needs the result to be focused first, and
   # `down` moves the selection without committing to a row number.
-  # THE FOCUS IS PUT IN THE RESULT LIST BY CLICKING ITS SELECTED ROW, WHICH IS FOUND BY COLOUR.
+  # THE RESULT ROW IS CLICKED, AND THE CLICK IS RETRIED UNTIL THE SHEET'S OWN WORDS APPEAR.
   #
-  # MEASURED on run 44993137543, whose `Down` did nothing: the focus was still in the SEARCH FIELD, so
-  # `Down` moved a text cursor and `Return` re-ran the search. The final frame shows the sidebar with
-  # `Sharing` selected blue and `Remote login` grey beneath it - the list was never focused, and
-  # nothing ever opened.
+  # TWO EARLIER ATTEMPTS FAILED FOR OPPOSITE REASONS, AND BOTH ARE MEASURED:
   #
-  # The selected row is drawn in the system accent blue. MEASURED on that frame:
+  #   run 44993137543   `Down` then `Return` - the focus was still in the SEARCH FIELD, so `Down`
+  #                     moved a text cursor and `Return` re-ran the search. Nothing opened.
+  #   run 44997882247   `at_color [0,98,224]` on the SELECTED row - and by then NOTHING WAS SELECTED.
+  #                     Its final frame shows the search field with its blue focus ring, the sidebar
+  #                     with `Sharing` and `Remote login` both GREY, and the right-hand pane back on
+  #                     General. An earlier `Return` had re-run the search and cleared the selection,
+  #                     so the accent-blue the step was looking for had nothing to find.
   #
-  #	rgb(0,98,224) over x 616..811, y 128..159, centre (713,143)
+  # A GATE ON THE SELECTION'S COLOUR IS A GATE ON A STATE THAT THE STEP BEFORE IT CAN DESTROY. What
+  # this step wants is the sheet, so the SHEET is the condition, and the action is a click on the row
+  # - retried, because the row is drawn in a different place from run to run and a click that lands
+  # on the group heading only selects the group.
   #
-  # CLICKING IT PUTS THE FOCUS IN THE LIST WITHOUT DEPENDING ON WHERE THE ROW IS - the same property
-  # `at_color` gave the green button. `Down` then moves the selection one row, from `Sharing` to the
-  # `Remote login` beneath it, and `Return` opens it.
+  # THE ROW'S OWN TEXT WAS MEASURED ON THE FAILING FRAME by stripping 20px bands of the sidebar:
   #
-  # THE BAND IS THE SIDEBAR'S OWN COLUMN [600, 100, 830, 300], which contains the selected row at any
-  # of the window positions seen so far. `tolerance 40` because the row is antialiased at its edges.
-  step "focus the search result list"
-    at_color == [0, 98, 224]
-    color_tolerance == 40
-    color_region == [600, 100, 830, 300]
-    settle == 2
-  # THE GATE CANNOT BE "remote login", AND THAT MISTAKE COST A RUN.
+  #	y 130..150   "Sharing"        the group heading
+  #	y 160..180   "Remote login"   THE RESULT
   #
-  # MEASURED on run 44988267533, which reached `wait for sshd` and timed out there: the SIDEBAR
-  # contains the words `Remote login` as the search RESULT, so a check for [[remote, login]] passed
-  # while the sheet was not open at all - and the step after it then clicked (1138, 348), which on
-  # that screen was empty space in the Sharing list. Its final frame shows `Sharing` selected, the
-  # whole sharing page, and BOTH switches off:
-  #
-  #	[ remote login      ]
-  #	  Sharing            <- selected, blue
-  #	  Remote login       <- grey, NOT opened
-  #	Advanced
-  #	  Remote Management        [ off ]
-  #	  Remote Login             [ off ]     <- still off, because nothing ever clicked it
-  #
-  # THE SHEET'S OWN SENTENCE IS THE GATE. `lets users of other computers` appears in the sheet's
-  # description and nowhere in the sidebar or the page.
+  # and the click at (703, 340) this file used to carry was 160px BELOW both of them - measured on a
+  # window that opened far lower than this one. The retry means one wrong guess is not fatal.
   step "open the remote login detail sheet"
-    loop == {check: {from: screen, mode: text, name: sheet, rect: [600, 200, 1500, 800], rect_at: [1920, 1080], scale: 1, words: [[lets, users, of, other, computers]]}, do: [{key: ret, settle: 5}], max: 4, see: {name: screen}, until: {fact: sheet}}
+    loop == {check: {from: screen, mode: text, name: sheet, rect: [600, 150, 1600, 900], rect_at: [1920, 1080], scale: 1, words: [[lets, users, of, other, computers]]}, do: [{click: [703, 170], settle: 4}], max: 5, see: {name: screen}, until: {fact: sheet}}
   # ITS SWITCH, MEASURED FROM THE TRACK ITSELF: a white knob (255,255,255) at x 1124..1146 and the
   # grey track (216..221) at x 1148..1158, inside y 340..356 - centre (1138, 348), knob on the LEFT,
   # which is OFF.
