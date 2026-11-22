@@ -91,10 +91,17 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # image's search does work; this one opens its window at a slightly different height, so the click
   # is made at the field's own centre and `Cmd+F` is pressed afterwards - one of the two focuses it,
   # and the check below proves which.
-  step "click the settings search field"
-    click == [715, 322]
-    settle == 3
-  step "and ask the keyboard to focus it too, if the click missed"
+  # THE SEARCH FIELD IS REACHED WITH Cmd+F AND NOT WITH A COORDINATE, BECAUSE THE WINDOW IS NOW
+  # MAXIMISED AND ITS SEARCH FIELD HAS MOVED.
+  #
+  # MEASURED: on the un-zoomed window the field sat at y 322 (and at y 267 on an earlier run) - the
+  # two numbers that produced this stage's only two click-the-field attempts. After the green button
+  # is pressed the window fills the screen, so the field is near the TOP and BOTH numbers are wrong.
+  # A coordinate measured before a zoom cannot survive the zoom.
+  #
+  # Cmd+F IS SYSTEM SETTINGS' OWN FIND COMMAND. It does not care where the window is or how big it is,
+  # which is exactly the property this stage has been missing.
+  step "focus the settings search field"
     key == meta_l+f
     settle == 4
   # THE SEARCH IS RETRIED, AND EVERY RETRY CLEARS THE FIELD FIRST.
@@ -127,15 +134,35 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # `doType` reads `clear:` inside `if s.Has("click")` - it is the "click the box, select all, type"
   # sequence, which is what a search field needs. A step with `clear: true` and no `click:` compiles,
   # passes `easyvm check`, and TYPES WITHOUT CLEARING.
+  # `Cmd+A` THEN TYPE, RATHER THAN `clear:` - and this is the engine rule that cost a run.
+  #
+  # `clear:` ONLY ACTS NEXT TO A `click:` (see `doType`: the flag is read inside `if s.Has("click")`),
+  # so a step with `clear: true` and no click types WITHOUT CLEARING. MEASURED on run 44964926871, whose
+  # search field held
+  #
+  #	"emote loginrem ote lom* loginremote loginremate lomote loginn"
+  #
+  # eight copies of the query, because the retry loop appended each attempt to the last.
+  #
+  # A `meta_l+a` BEFORE THE TEXT REPLACES IT AND NEEDS NO COORDINATE.
   step "search for remote login"
-    click == [715, 322]
-    clear == true
-    modifier == meta_l
+    key == meta_l+a
+    settle == 1
+  step "type the query, replacing whatever was there"
     type == remote login
     settle == 3
   press Return, waiting 4s, named "run the search"
   step "the remote login result is on screen"
-    loop == {check: {from: screen, mode: text, name: found, rect: [610, 250, 830, 850], rect_at: [1920, 1080], scale: 1, words: [[sharing]]}, do: [{key: meta_l+a, settle: 1}, {type: remote login, settle: 3}, {key: ret, settle: 4}], max: 4, see: {name: screen}, until: {fact: found}}
+    # THE BAND IS THE WHOLE LEFT THIRD OF THE SCREEN, TOP TO BOTTOM, BECAUSE THE WINDOW IS ZOOMED.
+    #
+    # The previous band, [610, 250, 830, 850], was measured against the UN-ZOOMED window: its sidebar
+    # began at x 610 and its list at y 250. A maximised System Settings puts the sidebar at the far
+    # left of the display and the list starts near the top, so both edges are wrong now.
+    #
+    # The left third [0, 60, 900, 1050] contains the sidebar of a maximised window at ANY plausible
+    # width, and `sharing` appears in that sidebar and nowhere else on this screen. Excluding the top
+    # 60px skips the menu bar, which carries the clock and Control-Centre glyphs.
+    loop == {check: {from: screen, mode: text, name: found, rect: [0, 60, 900, 1050], rect_at: [1920, 1080], scale: 1, words: [[sharing]]}, do: [{key: meta_l+a, settle: 1}, {type: remote login, settle: 3}, {key: ret, settle: 4}], max: 4, see: {name: screen}, until: {fact: found}}
   # THE RESULT IS TWO ROWS UNDER A HEADING, AND [703, 336] LANDED BETWEEN THEM.
   #
   # MEASURED on run 44846410525's recording, whose search DID work after `Cmd+F`:
@@ -227,8 +254,25 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   #
   # THE SHEET IS ALSO THE BEST TARGET ON THIS SCREEN: `Remote Login: Off` is a sentence, the switch is
   # in the middle of the display, and the window's own position does not matter.
+  # THE RESULT IS OPENED WITH RETURN, NOT WITH A CLICK, BECAUSE THE WINDOW IS NOW ZOOMED AND THE
+  # ROW'S COORDINATE WAS MEASURED BEFORE THE ZOOM.
+  #
+  # `click [703, 340]` was right on the un-zoomed window: its sidebar began at x 610 and the search
+  # result sat at y 340. A maximised System Settings puts the sidebar at the display's far left and
+  # the first result near the top, so BOTH numbers are wrong - the same trap as the search field's
+  # y 267 vs y 322, one step later.
+  #
+  # THE KEYBOARD HAS NO SUCH PROBLEM. The search has just filtered the sidebar, so its first result is
+  # already selected; Return opens it. That is the same gesture a person uses, and it does not depend
+  # on where the row is drawn.
+  #
+  # THE LOOP REMAINS because a maximised window occasionally needs the result to be focused first, and
+  # `down` moves the selection without committing to a row number.
+  step "focus the search result"
+    key == down
+    settle == 1
   step "open the remote login detail sheet"
-    loop == {check: {from: screen, mode: text, name: sheet, rect: [760, 300, 1200, 480], rect_at: [1920, 1080], scale: 2, words: [[remote, login]]}, do: [{click: [703, 340], settle: 5}], max: 4, see: {name: screen}, until: {fact: sheet}}
+    loop == {check: {from: screen, mode: text, name: sheet, rect: [600, 200, 1400, 700], rect_at: [1920, 1080], scale: 1, words: [[remote, login]]}, do: [{key: ret, settle: 5}], max: 4, see: {name: screen}, until: {fact: sheet}}
   # ITS SWITCH, MEASURED FROM THE TRACK ITSELF: a white knob (255,255,255) at x 1124..1146 and the
   # grey track (216..221) at x 1148..1158, inside y 340..356 - centre (1138, 348), knob on the LEFT,
   # which is OFF.
@@ -259,8 +303,17 @@ walkthrough "macos 26 ssh - the setup assistant, remote login, and a graceful sh
   # SO THE DIALOG IS ANSWERED, and the question "did it work" is asked of the SWITCH rather than of a
   # sentence: after the dialog is accepted the pane shows the remote-login status line, and the old
   # phrase is kept as an OR because that is what a 15-style pane would show.
+  # THE BAND IS WIDENED, BECAUSE THE WINDOW IS NOW ZOOMED AND THE SHEET IS DRAWN LARGER.
+  #
+  # [830, 380, 1200, 730] was measured on an un-zoomed window whose sheet was 470px wide. A maximised
+  # window centres a wider sheet, so its left edge moves right and its right edge moves right with it.
+  # [700, 260, 1500, 900] contains that sheet at any of the sizes this window has been seen at, and
+  # `trying to modify` is a sentence that appears in no other dialog on this system.
+  #
+  # `scale 1` rather than 2: the sentence is 13-point and the 2x upscale was needed only when the band
+  # was tight enough to clip it. A wide band already has the pixels.
   step "the authorisation dialog is up, if this pane asks for one"
-    loop == {check: {from: screen, mode: text, name: asked, rect: [830, 380, 1200, 730], rect_at: [1920, 1080], scale: 2, words: [[remote, login, is, trying, to, modify]]}, do: [{settle: 2}], max: 6, see: {name: screen}, until: {fact: asked}}
+    loop == {check: {from: screen, mode: text, name: asked, rect: [700, 260, 1500, 900], rect_at: [1920, 1080], scale: 1, words: [[trying, to, modify]]}, do: [{settle: 2}], max: 6, see: {name: screen}, until: {fact: asked}}
     optional == true
   # THE COORDINATES ARE MEASURED FROM THE DIALOG ITSELF, NOT FROM ITS SHAPE.
   #
